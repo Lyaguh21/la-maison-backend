@@ -1,154 +1,10 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
-import { CreateObjectDto } from './dto/create-object.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
-import { UpdateObjectDto } from './dto/update-object.dto';
+import { SyncFloorDto } from './dto/sync-floor-dto';
 
 @Injectable()
 export class FloorItemsService {
   constructor(private readonly prisma: PrismaService) {}
-
-  async createObject(dto: CreateObjectDto) {
-    if (dto.type === 'TABLE') {
-      const existingTable = await this.prisma.tables.findUnique({
-        where: { number: dto.number },
-      });
-
-      if (existingTable) {
-        throw new BadRequestException('Стол с таким номером уже существует');
-      }
-
-      const table = await this.prisma.tables.create({
-        data: {
-          number: dto.number,
-          tableType: dto.tableType,
-          photo: dto.photo,
-        },
-        select: {
-          id: true,
-          number: true,
-          tableType: true,
-          photo: true,
-          createdAt: true,
-          updatedAt: true,
-        },
-      });
-
-      const floorItem = await this.prisma.floorItems.create({
-        data: {
-          type: 'TABLE',
-          tableId: table.id,
-          x: dto.x,
-          y: dto.y,
-          height: dto.height,
-          width: dto.width,
-          rotation: dto.rotation,
-        },
-        select: {
-          id: true,
-          type: true,
-          tableId: true,
-          x: true,
-          y: true,
-          height: true,
-          width: true,
-          rotation: true,
-        },
-      });
-
-      return { table, floorItem };
-    } else {
-      return await this.prisma.floorItems.create({
-        data: {
-          x: dto.x,
-          y: dto.y,
-          height: dto.height,
-          width: dto.width,
-          rotation: dto.rotation,
-          type: dto.type,
-        },
-        select: {
-          id: true,
-          type: true,
-          x: true,
-          y: true,
-          height: true,
-          width: true,
-          rotation: true,
-        },
-      });
-    }
-  }
-
-  async updateObject(dto: UpdateObjectDto) {
-    if (dto.tableId) {
-      const existingTable = await this.prisma.tables.findUnique({
-        where: { id: dto.tableId },
-      });
-
-      if (!existingTable) {
-        throw new BadRequestException('Стола с таким id не существует');
-      }
-
-      const table = await this.prisma.tables.update({
-        where: { id: dto.tableId },
-        data: {
-          number: dto.number,
-          photo: dto.photo,
-        },
-        select: {
-          id: true,
-          number: true,
-          tableType: true,
-          photo: true,
-          createdAt: true,
-          updatedAt: true,
-        },
-      });
-
-      const floorItem = await this.prisma.floorItems.update({
-        where: { id: dto.objectId },
-        data: {
-          x: dto.x,
-          y: dto.y,
-          height: dto.height,
-          width: dto.width,
-          rotation: dto.rotation,
-        },
-        select: {
-          id: true,
-          type: true,
-          tableId: true,
-          x: true,
-          y: true,
-          height: true,
-          width: true,
-          rotation: true,
-        },
-      });
-
-      return { table, floorItem };
-    } else {
-      return await this.prisma.floorItems.update({
-        where: { id: dto.objectId },
-        data: {
-          x: dto.x,
-          y: dto.y,
-          height: dto.height,
-          width: dto.width,
-          rotation: dto.rotation,
-        },
-        select: {
-          id: true,
-          type: true,
-          x: true,
-          y: true,
-          height: true,
-          width: true,
-          rotation: true,
-        },
-      });
-    }
-  }
 
   async getAll() {
     return await this.prisma.floorItems.findMany({
@@ -162,6 +18,7 @@ export class FloorItemsService {
         rotation: true,
         table: {
           select: {
+            id: true,
             number: true,
             tableType: true,
             photo: true,
@@ -170,6 +27,109 @@ export class FloorItemsService {
         },
         updatedAt: true,
       },
+    });
+  }
+
+  async sync(dto: SyncFloorDto) {
+    return this.prisma.$transaction(async (tx) => {
+      // В этот массив положим ВСЕ id, которые должны остаться (старые + новые)
+      const keepFloorItemIds: number[] = [];
+
+      for (const item of dto.items) {
+        // 1) TABLE: сначала создаём/обновляем Tables, потом FloorItems с tableId
+        if (item.type === 'TABLE') {
+          if (!item.number || !item.tableType) {
+            throw new BadRequestException(
+              'Для объектов типа TABLE должны быть указаны number и tableType',
+            );
+          }
+
+          // table: если tableId есть — обновляем, если нет — создаём
+          const table = item.tableId
+            ? await tx.tables.update({
+                where: { id: item.tableId },
+                data: {
+                  number: item.number,
+                  tableType: item.tableType,
+                  photo: item.photo ?? null,
+                },
+              })
+            : await tx.tables.create({
+                data: {
+                  number: item.number,
+                  tableType: item.tableType,
+                  photo: item.photo ?? null,
+                },
+              });
+
+          // floor item: если id есть — update, если нет — create
+          const floorItem = item.id
+            ? await tx.floorItems.update({
+                where: { id: item.id },
+                data: {
+                  type: 'TABLE',
+                  tableId: table.id,
+                  x: item.x,
+                  y: item.y,
+                  width: item.width,
+                  height: item.height,
+                  rotation: item.rotation,
+                },
+              })
+            : await tx.floorItems.create({
+                data: {
+                  type: 'TABLE',
+                  tableId: table.id,
+                  x: item.x,
+                  y: item.y,
+                  width: item.width,
+                  height: item.height,
+                  rotation: item.rotation,
+                },
+              });
+
+          keepFloorItemIds.push(floorItem.id);
+          continue;
+        }
+
+        // 2) НЕ TABLE: обычный floor item
+        const floorItem = item.id
+          ? await tx.floorItems.update({
+              where: { id: item.id },
+              data: {
+                type: item.type ?? 'EXIT',
+                x: item.x,
+                y: item.y,
+                width: item.width,
+                height: item.height,
+                rotation: item.rotation,
+                tableId: null, // важно: чтобы WC/EXIT/BAR не держали tableId
+              },
+            })
+          : await tx.floorItems.create({
+              data: {
+                type: item.type ?? 'EXIT',
+                x: item.x,
+                y: item.y,
+                width: item.width,
+                height: item.height,
+                rotation: item.rotation,
+                tableId: null,
+              },
+            });
+
+        keepFloorItemIds.push(floorItem.id);
+      }
+
+      // 3) Удаляем всё, чего нет в keepFloorItemIds
+      // Если пришёл пустой массив — удалим всё (твоя логика сохранена)
+      await tx.floorItems.deleteMany({
+        where: keepFloorItemIds.length
+          ? { id: { notIn: keepFloorItemIds } }
+          : {},
+      });
+
+      return true;
     });
   }
 }
