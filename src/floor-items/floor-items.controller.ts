@@ -1,9 +1,7 @@
-import { Body, Controller, Get, Patch, Post, Put } from '@nestjs/common';
+import { Body, Controller, Get, Put } from '@nestjs/common';
 import { FloorItemsService } from './floor-items.service';
 import { Roles } from 'src/auth/decorators/roles.decorator';
 import { ApiOperation } from '@nestjs/swagger';
-import { CreateObjectDto } from './dto/create-object.dto';
-import { UpdateObjectDto } from './dto/update-object.dto';
 import { SyncFloorDto } from './dto/sync-floor-dto';
 
 @Controller('floor-items')
