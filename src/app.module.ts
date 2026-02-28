@@ -8,6 +8,8 @@ import { RolesGuard } from './auth/guards/roles.guards';
 import { UsersModule } from './users/users.module';
 
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
+import { TablesModule } from './tables/tables.module';
+import { FloorItemsModule } from './floor-items/floor-items.module';
 
 @Module({
   imports: [
@@ -27,6 +29,8 @@ import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
     PrismaModule,
     AuthModule,
     UsersModule,
+    TablesModule,
+    FloorItemsModule,
   ],
   providers: [
     {

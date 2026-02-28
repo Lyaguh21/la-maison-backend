@@ -31,7 +31,7 @@ model User {
 
 //? Ресторан
 
-enum SeatsType {
+enum TableType {
   TWO
   FOUR
   SIX
@@ -40,7 +40,7 @@ enum SeatsType {
 model Tables {
   id         Int          @id @default(autoincrement())
   number     Int          @unique
-  seats      SeatsType
+  tableType  TableType
   photo      String?
   createdAt  DateTime     @default(now())
   updatedAt  DateTime     @updatedAt
@@ -58,7 +58,7 @@ model FloorItems {
   id        Int            @id @default(autoincrement())
   type      TypeFloorItems
   tableId   Int?
-  table     Tables?        @relation(fields: [tableId], references: [id])
+  table     Tables?        @relation(fields: [tableId], references: [id], onDelete: Cascade)
   x         Int
   y         Int
   width     Int
@@ -66,6 +66,8 @@ model FloorItems {
   rotation  Int
   createdAt DateTime       @default(now())
   updatedAt DateTime       @updatedAt
+
+  @@unique([tableId])
 }
 
 //? Меню
