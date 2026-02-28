@@ -6,29 +6,170 @@ datasource db {
   provider = "postgresql"
 }
 
-model Student {
-  id        Int      @id @default(autoincrement())
-  name      String
-  email     String?  @unique
-  age       Int?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
+//? Пользователи
 
 enum Role {
-  ADMIN
-  WAITER
-  COOK
-  CUSTOMER
+  ADMIN // Менеджер
+  WAITER // Официант
+  COOK // Повар
+  CUSTOMER // Клиент
 }
 
 model User {
-  id                 Int      @id @default(autoincrement())
-  email              String   @unique
+  id                 Int            @id @default(autoincrement())
+  name               String
+  email              String         @unique
+  phone              String?        @unique
   passwordHash       String
   hashedRefreshToken String? // может быть null (если не залогинен)
-  tokenVersion       Int      @default(0)
-  role               Role     @default(CUSTOMER)
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
+  tokenVersion       Int            @default(0)
+  role               Role           @default(CUSTOMER)
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
+  userAllergens      UserAllergen[]
+}
+
+model Allergen {
+  id            Int            @id @default(autoincrement())
+  name          String         @unique
+  userAllergens UserAllergen[]
+}
+
+model UserAllergen {
+  userId     Int
+  allergenId Int
+  user       User     @relation(fields: [userId], references: [id])
+  allergen   Allergen @relation(fields: [allergenId], references: [id])
+
+  @@id([userId, allergenId])
+}
+
+//? Ресторан
+
+enum SeatsType {
+  TWO
+  FOUR
+  SIX
+}
+
+model Tables {
+  id         Int          @id @default(autoincrement())
+  number     Int          @unique
+  seats      SeatsType
+  photo      String?
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+  floorItems FloorItems[]
+}
+
+enum TypeFloorItems {
+  TABLE
+  WC
+  EXIT
+  BAR
+}
+
+model FloorItems {
+  id        Int            @id @default(autoincrement())
+  type      TypeFloorItems
+  tableId   Int?
+  table     Tables?        @relation(fields: [tableId], references: [id])
+  x         Int
+  y         Int
+  width     Int
+  height    Int
+  rotation  Int
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+}
+
+//? Меню
+
+model MenuCategory {
+  id        Int        @id @default(autoincrement())
+  name      String     @unique
+  menuItems MenuItem[]
+}
+
+model Ingredients {
+  id        Int        @id @default(autoincrement())
+  name      String     @unique
+  menuItems MenuItem[]
+}
+
+model MenuItem {
+  id            Int          @id @default(autoincrement())
+  categoryId    Int
+  category      MenuCategory @relation(fields: [categoryId], references: [id])
+  name          String
+  description   String?
+  price         Float
+  photo         String?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  ingredients   Ingredients? @relation(fields: [ingredientsId], references: [id])
+  ingredientsId Int?
+  orderItems    OrderItem[]
+}
+
+//? Бронирования, посещения и заказы
+
+enum StatusReservations {
+  BOOKED
+  SEATED
+  CANCELLED
+  PAID
+  COMPLETED
+  NO_SHOW
+}
+
+model Reservation {
+  id         Int                @id @default(autoincrement())
+  userId     Int?
+  guestName  String?
+  guestPhone String?
+  tableId    Int
+  guestCount Int
+  status     StatusReservations @default(BOOKED)
+
+  startTime     DateTime
+  endTime       DateTime
+  realStartTime DateTime?
+  realEndTime   DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  order Order[]
+}
+
+model Order {
+  id            Int         @id @default(autoincrement())
+  reservationId Int
+  reservation   Reservation @relation(fields: [reservationId], references: [id])
+
+  totalPrice Float
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+  orderItems OrderItem[]
+}
+
+enum StatusOrderItem {
+  COOKING
+  READY
+  SERVED
+}
+
+model OrderItem {
+  id            Int             @id @default(autoincrement())
+  orderId       Int
+  menuItemId    Int
+  comment       String?
+  quantity      Int
+  priceSnapshot Int
+  status        StatusOrderItem @default(COOKING)
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  menuItem      MenuItem        @relation(fields: [menuItemId], references: [id])
+  order         Order           @relation(fields: [orderId], references: [id])
 }

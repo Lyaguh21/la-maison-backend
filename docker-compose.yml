@@ -3,7 +3,7 @@ version: '3.8'
 services:
   postgres:
     image: postgres:15
-    container_name: backend_postgres
+    container_name: la-maison
     restart: always
     environment:
       POSTGRES_USER: admin

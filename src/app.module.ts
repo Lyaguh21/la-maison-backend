@@ -1,6 +1,5 @@
 import { Module } from '@nestjs/common';
 import { PrismaModule } from './prisma/prisma.module';
-import { StudentsModule } from './students/students.module';
 import { ConfigModule } from '@nestjs/config';
 import { AuthModule } from './auth/auth.module';
 import Joi from 'joi';
@@ -26,7 +25,6 @@ import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
       },
     ]),
     PrismaModule,
-    StudentsModule,
     AuthModule,
     UsersModule,
   ],
