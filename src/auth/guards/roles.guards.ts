@@ -6,7 +6,7 @@ import {
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { ROLES_KEY } from '../decorators/roles.decorator';
-import { AuthUser, Role } from 'src/auth/types/auth-user.type';
+import type { AuthUser, Role } from '../types/auth-user.type';
 
 @Injectable()
 export class RolesGuard implements CanActivate {
@@ -23,10 +23,24 @@ export class RolesGuard implements CanActivate {
     const req = ctx.switchToHttp().getRequest();
     const user = req.user as AuthUser | undefined;
 
-    if (!user) throw new ForbiddenException('No user');
+    // сюда обычно не должно доходить, если access guard отработал
+    if (!user) {
+      throw new ForbiddenException({
+        code: 'NO_USER',
+        message: 'User is not authenticated',
+      });
+    }
 
-    const allowed = requiredRoles.includes(user.role);
-    if (!allowed) throw new ForbiddenException('Forbidden');
+    if (!requiredRoles.includes(user.role)) {
+      throw new ForbiddenException({
+        code: 'INSUFFICIENT_ROLE',
+        message: 'You do not have permission to access this resource',
+        details: {
+          required: requiredRoles,
+          got: user.role,
+        },
+      });
+    }
 
     return true;
   }

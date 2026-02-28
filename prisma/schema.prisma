@@ -16,32 +16,17 @@ enum Role {
 }
 
 model User {
-  id                 Int            @id @default(autoincrement())
-  name               String
-  email              String         @unique
-  phone              String?        @unique
+  id                 Int      @id @default(autoincrement())
+  name               String?
+  email              String   @unique
+  phone              String?  @unique
   passwordHash       String
-  hashedRefreshToken String? // может быть null (если не залогинен)
-  tokenVersion       Int            @default(0)
-  role               Role           @default(CUSTOMER)
-  createdAt          DateTime       @default(now())
-  updatedAt          DateTime       @updatedAt
-  userAllergens      UserAllergen[]
-}
-
-model Allergen {
-  id            Int            @id @default(autoincrement())
-  name          String         @unique
-  userAllergens UserAllergen[]
-}
-
-model UserAllergen {
-  userId     Int
-  allergenId Int
-  user       User     @relation(fields: [userId], references: [id])
-  allergen   Allergen @relation(fields: [allergenId], references: [id])
-
-  @@id([userId, allergenId])
+  hashedRefreshToken String?
+  tokenVersion       Int      @default(0)
+  role               Role     @default(ADMIN) //! Временно
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  userAllergens      String[]
 }
 
 //? Ресторан
