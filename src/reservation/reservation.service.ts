@@ -5,6 +5,7 @@ import { TablesService } from 'src/tables/tables.service';
 import { UpdateReservationDto } from './dto/update-reservation.dto';
 import { UpdateReservationStatusDto } from './dto/update-reservation-status.dto';
 import type { AuthUser } from 'src/auth/types/auth-user.type';
+import { ListReservationInMomentDto } from './dto/list-reservations-in-moment';
 
 @Injectable()
 export class ReservationService {
@@ -89,5 +90,26 @@ export class ReservationService {
         },
       });
     }
+  }
+
+  async getMoment(dto: ListReservationInMomentDto) {
+    const moment = dto.Moment ?? new Date().toISOString();
+
+    return await this.prisma.reservation.findMany({
+      where: {
+        OR: [
+          // Бронь попадает в момент времени
+          {
+            startTime: { lte: moment },
+            endTime: { gte: moment },
+          },
+          // Гости сидят (realStartTime есть, realEndTime нет)
+          {
+            realStartTime: { not: null },
+            realEndTime: null,
+          },
+        ],
+      },
+    });
   }
 }
