@@ -10,6 +10,7 @@ import { UsersModule } from './users/users.module';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { TablesModule } from './tables/tables.module';
 import { FloorItemsModule } from './floor-items/floor-items.module';
+import { ReservationModule } from './reservation/reservation.module';
 
 @Module({
   imports: [
@@ -31,6 +32,7 @@ import { FloorItemsModule } from './floor-items/floor-items.module';
     UsersModule,
     TablesModule,
     FloorItemsModule,
+    ReservationModule,
   ],
   providers: [
     {
