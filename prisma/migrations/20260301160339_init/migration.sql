@@ -1,12 +1,8 @@
-/*
-  Warnings:
-
-  - A unique constraint covering the columns `[phone]` on the table `User` will be added. If there are existing duplicate values, this will fail.
-  - Added the required column `name` to the `User` table without a default value. This is not possible if the table is not empty.
-
-*/
 -- CreateEnum
-CREATE TYPE "SeatsType" AS ENUM ('TWO', 'FOUR', 'SIX');
+CREATE TYPE "Role" AS ENUM ('ADMIN', 'WAITER', 'COOK', 'CUSTOMER');
+
+-- CreateEnum
+CREATE TYPE "TableType" AS ENUM ('TWO', 'FOUR', 'SIX');
 
 -- CreateEnum
 CREATE TYPE "TypeFloorItems" AS ENUM ('TABLE', 'WC', 'EXIT', 'BAR');
@@ -17,31 +13,28 @@ CREATE TYPE "StatusReservations" AS ENUM ('BOOKED', 'SEATED', 'CANCELLED', 'PAID
 -- CreateEnum
 CREATE TYPE "StatusOrderItem" AS ENUM ('COOKING', 'READY', 'SERVED');
 
--- AlterTable
-ALTER TABLE "User" ADD COLUMN     "name" TEXT NOT NULL,
-ADD COLUMN     "phone" TEXT;
-
 -- CreateTable
-CREATE TABLE "Allergen" (
+CREATE TABLE "User" (
     "id" SERIAL NOT NULL,
-    "name" TEXT NOT NULL,
+    "name" TEXT,
+    "email" TEXT NOT NULL,
+    "phone" TEXT,
+    "passwordHash" TEXT NOT NULL,
+    "hashedRefreshToken" TEXT,
+    "tokenVersion" INTEGER NOT NULL DEFAULT 0,
+    "role" "Role" NOT NULL DEFAULT 'ADMIN',
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+    "userAllergens" TEXT[],
 
-    CONSTRAINT "Allergen_pkey" PRIMARY KEY ("id")
-);
-
--- CreateTable
-CREATE TABLE "userAllergen" (
-    "userId" INTEGER NOT NULL,
-    "allergenId" INTEGER NOT NULL,
-
-    CONSTRAINT "userAllergen_pkey" PRIMARY KEY ("userId","allergenId")
+    CONSTRAINT "User_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
 CREATE TABLE "Tables" (
     "id" SERIAL NOT NULL,
     "number" INTEGER NOT NULL,
-    "seats" "SeatsType" NOT NULL,
+    "tableType" "TableType" NOT NULL,
     "photo" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
@@ -50,7 +43,7 @@ CREATE TABLE "Tables" (
 );
 
 -- CreateTable
-CREATE TABLE "floor_items" (
+CREATE TABLE "FloorItems" (
     "id" SERIAL NOT NULL,
     "type" "TypeFloorItems" NOT NULL,
     "tableId" INTEGER,
@@ -62,7 +55,7 @@ CREATE TABLE "floor_items" (
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
-    CONSTRAINT "floor_items_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "FloorItems_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -74,15 +67,15 @@ CREATE TABLE "MenuCategory" (
 );
 
 -- CreateTable
-CREATE TABLE "Ingredients" (
+CREATE TABLE "Ingredient" (
     "id" SERIAL NOT NULL,
     "name" TEXT NOT NULL,
 
-    CONSTRAINT "Ingredients_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "Ingredient_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
-CREATE TABLE "MenuItem" (
+CREATE TABLE "Dish" (
     "id" SERIAL NOT NULL,
     "categoryId" INTEGER NOT NULL,
     "name" TEXT NOT NULL,
@@ -91,9 +84,16 @@ CREATE TABLE "MenuItem" (
     "photo" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
-    "ingredientsId" INTEGER,
 
-    CONSTRAINT "MenuItem_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "Dish_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "DishIngredient" (
+    "dishId" INTEGER NOT NULL,
+    "ingredientId" INTEGER NOT NULL,
+
+    CONSTRAINT "DishIngredient_pkey" PRIMARY KEY ("dishId","ingredientId")
 );
 
 -- CreateTable
@@ -103,12 +103,13 @@ CREATE TABLE "Reservation" (
     "guestName" TEXT,
     "guestPhone" TEXT,
     "tableId" INTEGER NOT NULL,
-    "guestCount" INTEGER NOT NULL,
+    "guestsCount" INTEGER NOT NULL,
     "status" "StatusReservations" NOT NULL DEFAULT 'BOOKED',
     "startTime" TIMESTAMP(3) NOT NULL,
     "endTime" TIMESTAMP(3) NOT NULL,
     "realStartTime" TIMESTAMP(3),
     "realEndTime" TIMESTAMP(3),
+    "waiterId" INTEGER,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
@@ -130,7 +131,7 @@ CREATE TABLE "Order" (
 CREATE TABLE "OrderItem" (
     "id" SERIAL NOT NULL,
     "orderId" INTEGER NOT NULL,
-    "menuItemId" INTEGER NOT NULL,
+    "dishId" INTEGER NOT NULL,
     "comment" TEXT,
     "quantity" INTEGER NOT NULL,
     "priceSnapshot" INTEGER NOT NULL,
@@ -142,40 +143,40 @@ CREATE TABLE "OrderItem" (
 );
 
 -- CreateIndex
-CREATE UNIQUE INDEX "Allergen_name_key" ON "Allergen"("name");
+CREATE UNIQUE INDEX "User_email_key" ON "User"("email");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "User_phone_key" ON "User"("phone");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "Tables_number_key" ON "Tables"("number");
 
 -- CreateIndex
+CREATE UNIQUE INDEX "FloorItems_tableId_key" ON "FloorItems"("tableId");
+
+-- CreateIndex
 CREATE UNIQUE INDEX "MenuCategory_name_key" ON "MenuCategory"("name");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "Ingredients_name_key" ON "Ingredients"("name");
-
--- CreateIndex
-CREATE UNIQUE INDEX "User_phone_key" ON "User"("phone");
+CREATE UNIQUE INDEX "Ingredient_name_key" ON "Ingredient"("name");
 
 -- AddForeignKey
-ALTER TABLE "userAllergen" ADD CONSTRAINT "userAllergen_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "FloorItems" ADD CONSTRAINT "FloorItems_tableId_fkey" FOREIGN KEY ("tableId") REFERENCES "Tables"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "userAllergen" ADD CONSTRAINT "userAllergen_allergenId_fkey" FOREIGN KEY ("allergenId") REFERENCES "Allergen"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "Dish" ADD CONSTRAINT "Dish_categoryId_fkey" FOREIGN KEY ("categoryId") REFERENCES "MenuCategory"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "floor_items" ADD CONSTRAINT "floor_items_tableId_fkey" FOREIGN KEY ("tableId") REFERENCES "Tables"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "DishIngredient" ADD CONSTRAINT "DishIngredient_dishId_fkey" FOREIGN KEY ("dishId") REFERENCES "Dish"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "MenuItem" ADD CONSTRAINT "MenuItem_categoryId_fkey" FOREIGN KEY ("categoryId") REFERENCES "MenuCategory"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "MenuItem" ADD CONSTRAINT "MenuItem_ingredientsId_fkey" FOREIGN KEY ("ingredientsId") REFERENCES "Ingredients"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "DishIngredient" ADD CONSTRAINT "DishIngredient_ingredientId_fkey" FOREIGN KEY ("ingredientId") REFERENCES "Ingredient"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "Order" ADD CONSTRAINT "Order_reservationId_fkey" FOREIGN KEY ("reservationId") REFERENCES "Reservation"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "OrderItem" ADD CONSTRAINT "OrderItem_menuItemId_fkey" FOREIGN KEY ("menuItemId") REFERENCES "MenuItem"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "OrderItem" ADD CONSTRAINT "OrderItem_dishId_fkey" FOREIGN KEY ("dishId") REFERENCES "Dish"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "OrderItem" ADD CONSTRAINT "OrderItem_orderId_fkey" FOREIGN KEY ("orderId") REFERENCES "Order"("id") ON DELETE RESTRICT ON UPDATE CASCADE;

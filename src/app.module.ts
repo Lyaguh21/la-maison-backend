@@ -11,6 +11,7 @@ import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { TablesModule } from './tables/tables.module';
 import { FloorItemsModule } from './floor-items/floor-items.module';
 import { ReservationModule } from './reservation/reservation.module';
+import { MenuModule } from './menu/menu.module';
 
 @Module({
   imports: [
@@ -33,6 +34,7 @@ import { ReservationModule } from './reservation/reservation.module';
     TablesModule,
     FloorItemsModule,
     ReservationModule,
+    MenuModule,
   ],
   providers: [
     {
