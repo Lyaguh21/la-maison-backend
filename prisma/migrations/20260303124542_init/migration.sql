@@ -120,7 +120,7 @@ CREATE TABLE "Reservation" (
 CREATE TABLE "Order" (
     "id" SERIAL NOT NULL,
     "reservationId" INTEGER NOT NULL,
-    "totalPrice" DOUBLE PRECISION NOT NULL,
+    "totalPriceOrder" DOUBLE PRECISION NOT NULL,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
@@ -159,6 +159,9 @@ CREATE UNIQUE INDEX "MenuCategory_name_key" ON "MenuCategory"("name");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "Ingredient_name_key" ON "Ingredient"("name");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "Dish_name_key" ON "Dish"("name");
 
 -- AddForeignKey
 ALTER TABLE "FloorItems" ADD CONSTRAINT "FloorItems_tableId_fkey" FOREIGN KEY ("tableId") REFERENCES "Tables"("id") ON DELETE CASCADE ON UPDATE CASCADE;

@@ -147,10 +147,10 @@ model Order {
   reservationId Int
   reservation   Reservation @relation(fields: [reservationId], references: [id])
 
-  totalPrice Float
-  createdAt  DateTime    @default(now())
-  updatedAt  DateTime    @updatedAt
-  orderItems OrderItem[]
+  totalPriceOrder Float
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  orderItems      OrderItem[]
 }
 
 enum StatusOrderItem {

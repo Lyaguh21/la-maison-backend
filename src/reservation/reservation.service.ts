@@ -14,12 +14,39 @@ export class ReservationService {
     private readonly tables: TablesService,
   ) {}
 
-  getAll() {
-    return this.prisma.reservation.findMany();
+  async getAll() {
+    const reservations = await this.prisma.reservation.findMany({
+      include: {
+        order: {
+          select: { totalPriceOrder: true },
+        },
+      },
+    });
+
+    return reservations.map(({ order, ...reservation }) => ({
+      ...reservation,
+      totalPrice: order.reduce((sum, o) => sum + (o.totalPriceOrder ?? 0), 0),
+    }));
   }
 
   async getOne(id: number) {
-    return await this.prisma.reservation.findUnique({ where: { id } });
+    const reservation = await this.prisma.reservation.findUnique({
+      where: { id },
+    });
+    if (!reservation) {
+      throw new BadRequestException('Бронь не найдена');
+    }
+
+    const totalPrice = await this.prisma.order.aggregate({
+      where: {
+        reservationId: id,
+      },
+      _sum: {
+        totalPriceOrder: true,
+      },
+    });
+
+    return { ...reservation, totalPrice: totalPrice._sum.totalPriceOrder };
   }
 
   async create(reservation: CreateReservationDto) {
