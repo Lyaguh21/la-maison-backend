@@ -17,6 +17,10 @@ REST API на **NestJS** + **Prisma** + **PostgreSQL** с JWT-аутентифи
 | **Reservation** | Бронирование столиков со статусами (BOOKED → SEATED → PAID → COMPLETED и т.д.)                                       |
 | **Orders**      | Заказы привязаны к бронированию, позиции со статусами (COOKING → READY → SERVED)                                     |
 
+<p align="center">
+  <img src="screens/schema.jpg"  />
+</p>
+
 ---
 
 ## Стек технологий
