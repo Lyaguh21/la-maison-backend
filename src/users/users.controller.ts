@@ -33,7 +33,7 @@ export class UsersController {
       userId: user.userId,
       name: dto?.name,
       phone: dto?.phone,
-      userAllergens: dto?.userAllergens,
+      userAllergenIds: dto?.userAllergenIds,
     });
   }
 

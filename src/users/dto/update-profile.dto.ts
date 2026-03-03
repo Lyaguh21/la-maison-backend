@@ -1,6 +1,8 @@
 import { ApiProperty } from '@nestjs/swagger';
+import { Type } from 'class-transformer';
 import {
   IsArray,
+  IsInt,
   IsOptional,
   IsPhoneNumber,
   IsString,
@@ -19,8 +21,13 @@ export class UpdateProfileDto {
   @IsOptional()
   phone?: string;
 
-  @ApiProperty({ example: ['Глютен', 'Лактоза'] })
+  @ApiProperty({
+    example: [1, 3],
+    description: 'Массив ID ингредиентов-аллергенов',
+  })
   @IsOptional()
   @IsArray()
-  userAllergens?: string[];
+  @IsInt({ each: true })
+  @Type(() => Number)
+  userAllergenIds?: number[];
 }

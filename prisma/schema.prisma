@@ -16,17 +16,17 @@ enum Role {
 }
 
 model User {
-  id                 Int      @id @default(autoincrement())
+  id                 Int          @id @default(autoincrement())
   name               String?
-  email              String   @unique
-  phone              String?  @unique
+  email              String       @unique
+  phone              String?      @unique
   passwordHash       String
   hashedRefreshToken String?
-  tokenVersion       Int      @default(0)
-  role               Role     @default(ADMIN) //! Временно
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
-  userAllergens      String[]
+  tokenVersion       Int          @default(0)
+  role               Role         @default(CUSTOMER)
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
+  userAllergens      Ingredient[] @relation("UserAllergens")
 }
 
 //? Ресторан
@@ -81,6 +81,7 @@ model Ingredient {
   id              Int              @id @default(autoincrement())
   name            String           @unique
   dishIngredients DishIngredient[]
+  allergenUsers   User[]           @relation("UserAllergens")
 }
 
 model Dish {

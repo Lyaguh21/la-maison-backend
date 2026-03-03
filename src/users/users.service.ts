@@ -31,6 +31,19 @@ export class UsersService {
         skip,
         take: limit,
         orderBy: { email: sort },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          phone: true,
+          role: true,
+          createdAt: true,
+          updatedAt: true,
+
+          userAllergens: {
+            select: { id: true, name: true },
+          },
+        },
       }),
 
       this.prisma.user.count({ where }),
@@ -49,19 +62,23 @@ export class UsersService {
     };
   }
 
+  private readonly userSelectFields = {
+    id: true,
+    name: true,
+    email: true,
+    phone: true,
+    role: true,
+    createdAt: true,
+    updatedAt: true,
+    userAllergens: {
+      select: { id: true, name: true },
+    },
+  };
+
   async getOne(id: number) {
     const user = await this.prisma.user.findUnique({
       where: { id },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        phone: true,
-        role: true,
-        createdAt: true,
-        updatedAt: true,
-        userAllergens: true,
-      },
+      select: this.userSelectFields,
     });
 
     if (!user) {
@@ -88,16 +105,7 @@ export class UsersService {
         hashedRefreshToken: null, // ключевое: выкидываем со всех устройств
         tokenVersion: { increment: 1 },
       },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        phone: true,
-        role: true,
-        createdAt: true,
-        updatedAt: true,
-        userAllergens: true,
-      },
+      select: this.userSelectFields,
     });
 
     return updated;
@@ -107,10 +115,10 @@ export class UsersService {
     userId: number;
     name?: string;
     phone?: string;
-    userAllergens?: string[];
+    userAllergenIds?: number[];
   }) {
-    const { name, phone, userId, userAllergens } = params;
-    if (!name && !phone && !userAllergens) {
+    const { name, phone, userId, userAllergenIds } = params;
+    if (!name && !phone && userAllergenIds === undefined) {
       throw new BadRequestException('At least one field must be provided');
     }
 
@@ -119,18 +127,13 @@ export class UsersService {
       data: {
         name,
         phone,
-        userAllergens: userAllergens,
+        ...(userAllergenIds !== undefined && {
+          userAllergens: {
+            set: userAllergenIds.map((id) => ({ id })),
+          },
+        }),
       },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        phone: true,
-        role: true,
-        createdAt: true,
-        updatedAt: true,
-        userAllergens: true,
-      },
+      select: this.userSelectFields,
     });
 
     return updated;

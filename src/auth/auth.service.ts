@@ -62,7 +62,9 @@ export class AuthService {
         role: true,
         createdAt: true,
         updatedAt: true,
-        userAllergens: true,
+        userAllergens: {
+          select: { id: true, name: true },
+        },
         passwordHash: true,
         tokenVersion: true,
       },
@@ -105,7 +107,9 @@ export class AuthService {
         role: true,
         createdAt: true,
         updatedAt: true,
-        userAllergens: true,
+        userAllergens: {
+          select: { id: true, name: true },
+        },
         passwordHash: true,
         tokenVersion: true,
       },
