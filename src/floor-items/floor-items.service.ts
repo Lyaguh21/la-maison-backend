@@ -21,7 +21,6 @@ export class FloorItemsService {
             id: true,
             number: true,
             tableType: true,
-            photo: true,
             updatedAt: true,
           },
         },
@@ -51,14 +50,12 @@ export class FloorItemsService {
                 data: {
                   number: item.number,
                   tableType: item.tableType,
-                  photo: item.photo ?? null,
                 },
               })
             : await tx.tables.create({
                 data: {
                   number: item.number,
                   tableType: item.tableType,
-                  photo: item.photo ?? null,
                 },
               });
 

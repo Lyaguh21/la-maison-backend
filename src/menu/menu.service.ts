@@ -3,6 +3,7 @@ import { CreateCategoryDto } from './dto/create-category.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateDishDto } from './dto/create-dish.dto';
 import { ListDishesDto } from './dto/list-dishes.dto';
+import { fileToBase64 } from 'src/common/utils/file-to-base64.util';
 
 @Injectable()
 export class MenuService {
@@ -45,7 +46,7 @@ export class MenuService {
     });
   }
 
-  async createDish(dto: CreateDishDto) {
+  async createDish(dto: CreateDishDto, photoBase64: string | null) {
     const exists = await this.prisma.dish.findUnique({
       where: { name: dto.name },
     });
@@ -58,7 +59,7 @@ export class MenuService {
         name: dto.name,
         description: dto.description,
         price: dto.price,
-        photo: dto.photo,
+        photo: photoBase64,
         dishIngredients: {
           create: dto.ingredientsIds.map((ingredientId) => ({
             ingredient: { connect: { id: ingredientId } },

@@ -1,4 +1,12 @@
-import { Body, Controller, Get, Post, Query } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Post,
+  Query,
+  UploadedFile,
+  UseInterceptors,
+} from '@nestjs/common';
 import { MenuService } from './menu.service';
 import { Roles } from 'src/auth/decorators/roles.decorator';
 import { ApiOperation } from '@nestjs/swagger';
@@ -6,6 +14,8 @@ import { CreateCategoryDto } from './dto/create-category.dto';
 import { CreateDishDto } from './dto/create-dish.dto';
 import { CreateIngredientDto } from './dto/create-ingredient.dto';
 import { ListDishesDto } from './dto/list-dishes.dto';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { fileToBase64 } from 'src/common/utils/file-to-base64.util';
 
 @Controller('menu')
 export class MenuController {
@@ -43,10 +53,16 @@ export class MenuController {
     return this.menu.getAllDishes(query);
   }
 
+  @UseInterceptors(FileInterceptor('photo'))
   @ApiOperation({ summary: 'Создание блюда в категории меню (Админ)' })
   @Roles('ADMIN')
   @Post('dish')
-  createDish(@Body() dto: CreateDishDto) {
-    return this.menu.createDish(dto);
+  createDish(
+    @Body() dto: CreateDishDto,
+    @UploadedFile() file: Express.Multer.File,
+  ) {
+    const photoBase64 = file ? fileToBase64(file) : null;
+
+    return this.menu.createDish(dto, photoBase64);
   }
 }

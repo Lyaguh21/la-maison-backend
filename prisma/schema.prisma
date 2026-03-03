@@ -41,7 +41,6 @@ model Tables {
   id         Int          @id @default(autoincrement())
   number     Int          @unique
   tableType  TableType
-  photo      String?
   createdAt  DateTime     @default(now())
   updatedAt  DateTime     @updatedAt
   floorItems FloorItems[]

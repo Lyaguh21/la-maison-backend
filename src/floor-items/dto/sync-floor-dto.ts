@@ -84,14 +84,6 @@ export class SyncFloorItemDto {
   @IsOptional()
   @IsIn(['TWO', 'FOUR', 'SIX'])
   tableType?: 'TWO' | 'FOUR' | 'SIX';
-
-  @ApiPropertyOptional({
-    example: 'https://example.com/photo.jpg',
-    description: 'Фото стола (только для объектов типа TABLE)',
-  })
-  @IsOptional()
-  @IsString()
-  photo?: string;
 }
 
 export class SyncFloorDto {

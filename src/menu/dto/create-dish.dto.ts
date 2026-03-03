@@ -32,10 +32,6 @@ export class CreateDishDto {
   @Min(0)
   price: number;
 
-  @IsString()
-  @IsOptional()
-  photo?: string;
-
   @ApiProperty({ example: [1, 2], description: 'Массив ID ингредиентов' })
   @IsArray()
   ingredientsIds: number[];
