@@ -44,7 +44,7 @@ export class AuthService {
       },
     });
     if (existingUser) {
-      throw new BadRequestException('User already exists');
+      throw new BadRequestException('Такой email уже зарегистрирован');
     }
 
     const passwordHash = await bcrypt.hash(dto.password, 10);

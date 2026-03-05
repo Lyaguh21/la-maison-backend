@@ -9,10 +9,7 @@ import cookieParser from 'cookie-parser';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
-  app.useGlobalInterceptors(
-    new ResponseInterceptor(),
-    new LoggingInterceptor(),
-  );
+  app.useGlobalInterceptors(new LoggingInterceptor());
   app.useGlobalFilters(new AllExceptionFilter());
 
   app.use(cookieParser());
@@ -35,6 +32,7 @@ async function bootstrap() {
   SwaggerModule.setup('docs', app, document);
 
   app.enableCors({
+    origin: 'http://localhost:5173',
     credentials: true,
   });
 

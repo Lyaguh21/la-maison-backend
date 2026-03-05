@@ -16,12 +16,14 @@ import { CreateIngredientDto } from './dto/create-ingredient.dto';
 import { ListDishesDto } from './dto/list-dishes.dto';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { fileToBase64 } from 'src/common/utils/file-to-base64.util';
+import { Public } from 'src/auth/decorators/public.decorator';
 
 @Controller('menu')
 export class MenuController {
   constructor(private readonly menu: MenuService) {}
 
   @ApiOperation({ summary: 'Получение всех категорий меню (Все)' })
+  @Public()
   @Get('categories')
   getAllCategories() {
     return this.menu.getAllCategories();
@@ -35,6 +37,7 @@ export class MenuController {
   }
 
   @ApiOperation({ summary: 'Получение всех ингредиентов (Все)' })
+  @Public()
   @Get('ingredients')
   getAllIngredients() {
     return this.menu.getAllIngredients();
@@ -48,6 +51,7 @@ export class MenuController {
   }
 
   @ApiOperation({ summary: 'Получение всех блюд (Все)' })
+  @Public()
   @Get('dishes')
   getAllDishes(@Query() query: ListDishesDto) {
     return this.menu.getAllDishes(query);

@@ -3,7 +3,6 @@ import {
   Controller,
   Get,
   Post,
-  Req,
   Res,
   UseGuards,
 } from '@nestjs/common';
@@ -11,15 +10,14 @@ import { AuthService } from './auth.service';
 import { ConfigService } from '@nestjs/config';
 import { RegisterDto } from './dto/register.dto';
 import { clearAuthCookies, setAuthCookies } from './auth.cookies';
-import { JwtAccessGuard } from './guards/jwt-access.guard';
-import type { Request, Response } from 'express';
+import type { Response } from 'express';
 import { parseDurationMs } from './utils/parse-duration-ms';
 import { CurrentUser } from './decorators/current-user.decorator';
 import type { AuthUser, AuthUserWithRefresh } from './types/auth-user.type';
 import { ApiCookieAuth, ApiTags } from '@nestjs/swagger';
 import { JwtRefreshGuard } from './guards/jwt-refresh.guard';
 import { Public } from './decorators/public.decorator';
-import { Throttle } from '@nestjs/throttler';
+
 
 @ApiTags('auth')
 @Controller('auth')
@@ -69,7 +67,7 @@ export class AuthController {
       refreshMaxAgeMs: this.refreshMaxAgeMs(),
     });
 
-    return { user: result.user };
+    return result.user;
   }
 
   @Post('login')
@@ -90,7 +88,7 @@ export class AuthController {
       refreshMaxAgeMs: this.refreshMaxAgeMs(),
     });
 
-    return { user: result.user };
+    return result.user;
   }
 
   @Public()
