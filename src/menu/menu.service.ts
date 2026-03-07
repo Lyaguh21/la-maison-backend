@@ -91,21 +91,36 @@ export class MenuService {
       where.name = { contains: search };
     }
 
-    const dishes = await this.prisma.dish.findMany({
-      where,
-      skip,
-      take: limit,
-      orderBy: { name: sort },
-      include: {
-        dishIngredients: {
-          include: { ingredient: true },
+    const [dishes, total] = await Promise.all([
+      this.prisma.dish.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { name: sort },
+        include: {
+          dishIngredients: {
+            include: { ingredient: true },
+          },
         },
-      },
-    });
+      }),
 
-    return dishes.map((dish) => ({
+      this.prisma.dish.count({ where }),
+    ]);
+
+    const pages = Math.ceil(total / limit);
+
+    const data = dishes.map((dish) => ({
       ...dish,
       dishIngredients: dish.dishIngredients.map((di) => di.ingredient),
     }));
+    return {
+      data,
+      meta: {
+        page,
+        limit,
+        total,
+        pages,
+      },
+    };
   }
 }
