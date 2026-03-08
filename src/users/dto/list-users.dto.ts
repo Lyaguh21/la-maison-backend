@@ -26,4 +26,9 @@ export class ListUsersDto {
   @IsOptional()
   @IsIn(['asc', 'desc'])
   sort?: 'asc' | 'desc';
+
+  @ApiPropertyOptional({ example: 'ALL' })
+  @IsOptional()
+  @IsIn(['ALL', 'ADMIN', 'COOK', 'WAITER', 'CUSTOMER'])
+  filter?: string;
 }

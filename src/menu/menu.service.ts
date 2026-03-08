@@ -80,7 +80,7 @@ export class MenuService {
   }
 
   async getAllDishes(query: ListDishesDto) {
-    const { categoryId, search, page = 1, limit = 10, sort = 'asc' } = query;
+    const { categoryId, search, page = 1, limit = 12, sort = 'asc' } = query;
     const skip = (page - 1) * limit;
 
     const where: any = {};

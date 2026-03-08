@@ -10,18 +10,24 @@ export class UsersService {
 
   async getAll(query: ListUsersDto) {
     const page = query.page || 1;
-    const limit = query.limit || 10;
+    const limit = query.limit || 15;
     const search = query.search?.trim();
     const sort = query.sort || 'asc';
+    const filter = query.filter || 'ALL';
 
-    const where = search
+    const roleFilter =
+      filter && filter !== 'ALL' ? { role: { equals: filter as Role } } : {};
+
+    const searchFilter = search
       ? {
           OR: [
             { name: { contains: search, mode: Prisma.QueryMode.insensitive } },
             { email: { contains: search, mode: Prisma.QueryMode.insensitive } },
           ],
         }
-      : undefined;
+      : {};
+
+    const where = { AND: [roleFilter, searchFilter] };
 
     const skip = (page - 1) * limit;
 
