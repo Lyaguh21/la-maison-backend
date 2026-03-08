@@ -6,15 +6,6 @@ datasource db {
   provider = "postgresql"
 }
 
-//? Пользователи
-
-enum Role {
-  ADMIN // Менеджер
-  WAITER // Официант
-  COOK // Повар
-  CUSTOMER // Клиент
-}
-
 model User {
   id                 Int          @id @default(autoincrement())
   name               String?
@@ -29,35 +20,19 @@ model User {
   userAllergens      Ingredient[] @relation("UserAllergens")
 }
 
-//? Ресторан
-
-enum TableType {
-  TWO
-  FOUR
-  SIX
-}
-
 model Tables {
-  id         Int          @id @default(autoincrement())
-  number     Int          @unique
+  id         Int         @id @default(autoincrement())
+  number     Int         @unique
   tableType  TableType
-  createdAt  DateTime     @default(now())
-  updatedAt  DateTime     @updatedAt
-  floorItems FloorItems[]
-}
-
-enum TypeFloorItems {
-  TABLE
-  WC
-  EXIT
-  BAR
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+  floorItems FloorItems?
 }
 
 model FloorItems {
   id        Int            @id @default(autoincrement())
   type      TypeFloorItems
-  tableId   Int?
-  table     Tables?        @relation(fields: [tableId], references: [id], onDelete: Cascade)
+  tableId   Int?           @unique
   x         Int
   y         Int
   width     Int
@@ -65,11 +40,8 @@ model FloorItems {
   rotation  Int
   createdAt DateTime       @default(now())
   updatedAt DateTime       @updatedAt
-
-  @@unique([tableId])
+  table     Tables?        @relation(fields: [tableId], references: [id], onDelete: Cascade)
 }
-
-//? Меню
 
 model MenuCategory {
   id     Int    @id @default(autoincrement())
@@ -85,17 +57,15 @@ model Ingredient {
 }
 
 model Dish {
-  id         Int          @id @default(autoincrement())
-  categoryId Int
-  category   MenuCategory @relation(fields: [categoryId], references: [id])
-
-  name        String   @unique
-  description String?
-  price       Float
-  photo       String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
+  id              Int              @id @default(autoincrement())
+  categoryId      Int
+  name            String           @unique
+  description     String?
+  price           Float
+  photo           String?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  category        MenuCategory     @relation(fields: [categoryId], references: [id])
   dishIngredients DishIngredient[]
   orderItems      OrderItem[]
 }
@@ -103,60 +73,38 @@ model Dish {
 model DishIngredient {
   dishId       Int
   ingredientId Int
-
-  dish       Dish       @relation(fields: [dishId], references: [id], onDelete: Cascade)
-  ingredient Ingredient @relation(fields: [ingredientId], references: [id], onDelete: Cascade)
+  dish         Dish       @relation(fields: [dishId], references: [id], onDelete: Cascade)
+  ingredient   Ingredient @relation(fields: [ingredientId], references: [id], onDelete: Cascade)
 
   @@id([dishId, ingredientId])
 }
 
-//? Бронирования, посещения и заказы
-
-enum StatusReservations {
-  BOOKED
-  SEATED
-  CANCELLED
-  PAID
-  COMPLETED
-  NO_SHOW
-}
-
 model Reservation {
-  id          Int                @id @default(autoincrement())
-  userId      Int?
-  guestName   String?
-  guestPhone  String?
-  tableId     Int
-  guestsCount Int
-  status      StatusReservations @default(BOOKED)
-
+  id            Int                @id @default(autoincrement())
+  userId        Int?
+  guestName     String?
+  guestPhone    String?
+  tableId       Int
+  guestsCount   Int
+  status        StatusReservations @default(BOOKED)
   startTime     DateTime
   endTime       DateTime
   realStartTime DateTime?
   realEndTime   DateTime?
-
-  waiterId  Int?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  order Order[]
+  waiterId      Int?
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+  order         Order[]
 }
 
 model Order {
-  id            Int         @id @default(autoincrement())
-  reservationId Int
-  reservation   Reservation @relation(fields: [reservationId], references: [id])
-
+  id              Int         @id @default(autoincrement())
+  reservationId   Int
   totalPriceOrder Float
   createdAt       DateTime    @default(now())
   updatedAt       DateTime    @updatedAt
+  reservation     Reservation @relation(fields: [reservationId], references: [id])
   orderItems      OrderItem[]
-}
-
-enum StatusOrderItem {
-  COOKING
-  READY
-  SERVED
 }
 
 model OrderItem {
@@ -171,4 +119,39 @@ model OrderItem {
   updatedAt     DateTime        @updatedAt
   dish          Dish            @relation(fields: [dishId], references: [id])
   order         Order           @relation(fields: [orderId], references: [id])
+}
+
+enum Role {
+  ADMIN
+  WAITER
+  COOK
+  CUSTOMER
+}
+
+enum TableType {
+  TWO
+  FOUR
+  SIX
+}
+
+enum TypeFloorItems {
+  TABLE
+  WC
+  EXIT
+  BAR
+}
+
+enum StatusReservations {
+  BOOKED
+  SEATED
+  CANCELLED
+  PAID
+  COMPLETED
+  NO_SHOW
+}
+
+enum StatusOrderItem {
+  COOKING
+  READY
+  SERVED
 }
