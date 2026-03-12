@@ -7,7 +7,7 @@ export class FloorItemsService {
   constructor(private readonly prisma: PrismaService) {}
 
   async getAll() {
-    return await this.prisma.floorItems.findMany({
+    const items = await this.prisma.floorItems.findMany({
       select: {
         id: true,
         type: true,
@@ -16,26 +16,34 @@ export class FloorItemsService {
         width: true,
         height: true,
         rotation: true,
+        tableId: true,
         table: {
           select: {
-            id: true,
             number: true,
             tableType: true,
-            updatedAt: true,
           },
         },
-        updatedAt: true,
       },
+    });
+
+    return items.map(({ table, tableId, ...item }) => {
+      if (table) {
+        return {
+          ...item,
+          tableId,
+          number: table.number,
+          tableType: table.tableType,
+        };
+      }
+      return item;
     });
   }
 
   async sync(dto: SyncFloorDto) {
     return this.prisma.$transaction(async (tx) => {
-      // В этот массив положим ВСЕ id, которые должны остаться (старые + новые)
       const keepFloorItemIds: number[] = [];
 
       for (const item of dto.items) {
-        // 1) TABLE: сначала создаём/обновляем Tables, потом FloorItems с tableId
         if (item.type === 'TABLE') {
           if (!item.number || !item.tableType) {
             throw new BadRequestException(
@@ -43,7 +51,6 @@ export class FloorItemsService {
             );
           }
 
-          // table: если tableId есть — обновляем, если нет — создаём
           const table = item.tableId
             ? await tx.tables.update({
                 where: { id: item.tableId },
@@ -59,7 +66,6 @@ export class FloorItemsService {
                 },
               });
 
-          // floor item: если id есть — update, если нет — create
           const floorItem = item.id
             ? await tx.floorItems.update({
                 where: { id: item.id },
@@ -89,7 +95,6 @@ export class FloorItemsService {
           continue;
         }
 
-        // 2) НЕ TABLE: обычный floor item
         const floorItem = item.id
           ? await tx.floorItems.update({
               where: { id: item.id },
@@ -100,7 +105,7 @@ export class FloorItemsService {
                 width: item.width,
                 height: item.height,
                 rotation: item.rotation,
-                tableId: null, // важно: чтобы WC/EXIT/BAR не держали tableId
+                tableId: null,
               },
             })
           : await tx.floorItems.create({
@@ -118,8 +123,6 @@ export class FloorItemsService {
         keepFloorItemIds.push(floorItem.id);
       }
 
-      // 3) Удаляем всё, чего нет в keepFloorItemIds
-      // Если пришёл пустой массив — удалим всё (твоя логика сохранена)
       await tx.floorItems.deleteMany({
         where: keepFloorItemIds.length
           ? { id: { notIn: keepFloorItemIds } }
