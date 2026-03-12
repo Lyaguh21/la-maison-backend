@@ -13,6 +13,7 @@ import { FloorItemsModule } from './floor-items/floor-items.module';
 import { ReservationModule } from './reservation/reservation.module';
 import { MenuModule } from './menu/menu.module';
 import { OrdersModule } from './orders/orders.module';
+import { DashboardsModule } from './dashboards/dashboards.module';
 
 @Module({
   imports: [
@@ -37,6 +38,7 @@ import { OrdersModule } from './orders/orders.module';
     ReservationModule,
     MenuModule,
     OrdersModule,
+    DashboardsModule,
   ],
   providers: [
     {
