@@ -1,18 +1,34 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
+import { DashboardWindow } from './dto/dashboard-window.dto';
+
+type BucketUnit = 'hour' | 'day' | 'month';
+
+type TimeWindow = {
+  start: Date;
+  end: Date;
+  bucket: BucketUnit;
+};
 
 @Injectable()
 export class DashboardsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async getRevenue7Days() {
-    const period = this.getDaysPeriod(7);
+  async getRevenue(window: DashboardWindow = DashboardWindow.WEEK) {
+    const minDate =
+      window === DashboardWindow.ALL
+        ? (await this.prisma.order.aggregate({ _min: { createdAt: true } }))
+            ._min.createdAt
+        : null;
+
+    const range = this.getRange(window, minDate);
+    const buckets = this.createBuckets(range);
 
     const orders = await this.prisma.order.findMany({
       where: {
         createdAt: {
-          gte: period.start,
-          lt: period.end,
+          gte: range.start,
+          lt: range.end,
         },
       },
       select: {
@@ -21,27 +37,33 @@ export class DashboardsService {
       },
     });
 
-    const sums = this.initDayMap(period.days);
+    const sums = this.initBucketsMap(buckets);
 
     for (const order of orders) {
-      const key = this.toDayKey(order.createdAt);
+      const key = this.getBucketKey(order.createdAt, range.bucket);
       sums.set(key, (sums.get(key) ?? 0) + (order.totalPriceOrder ?? 0));
     }
 
-    return period.days.map((day) => ({
-      date: this.toChartDate(day),
-      value: Number((sums.get(this.toDayKey(day)) ?? 0).toFixed(2)),
+    return buckets.map((bucket) => ({
+      date: bucket.label,
+      value: Number((sums.get(bucket.key) ?? 0).toFixed(2)),
     }));
   }
 
-  async getRevenueToday() {
-    const { todayStart, tomorrowStart } = this.getTodayRange();
+  async getRevenueTotal(window: DashboardWindow = DashboardWindow.WEEK) {
+    const minDate =
+      window === DashboardWindow.ALL
+        ? (await this.prisma.order.aggregate({ _min: { createdAt: true } }))
+            ._min.createdAt
+        : null;
+
+    const range = this.getRange(window, minDate);
 
     const data = await this.prisma.order.aggregate({
       where: {
         createdAt: {
-          gte: todayStart,
-          lt: tomorrowStart,
+          gte: range.start,
+          lt: range.end,
         },
       },
       _sum: {
@@ -54,14 +76,24 @@ export class DashboardsService {
     };
   }
 
-  async getReservations7Days() {
-    const period = this.getDaysPeriod(7);
+  async getReservations(window: DashboardWindow = DashboardWindow.WEEK) {
+    const minDate =
+      window === DashboardWindow.ALL
+        ? (
+            await this.prisma.reservation.aggregate({
+              _min: { createdAt: true },
+            })
+          )._min.createdAt
+        : null;
+
+    const range = this.getRange(window, minDate);
+    const buckets = this.createBuckets(range);
 
     const reservations = await this.prisma.reservation.findMany({
       where: {
         createdAt: {
-          gte: period.start,
-          lt: period.end,
+          gte: range.start,
+          lt: range.end,
         },
       },
       select: {
@@ -69,27 +101,36 @@ export class DashboardsService {
       },
     });
 
-    const counts = this.initDayMap(period.days);
+    const counts = this.initBucketsMap(buckets);
 
     for (const reservation of reservations) {
-      const key = this.toDayKey(reservation.createdAt);
+      const key = this.getBucketKey(reservation.createdAt, range.bucket);
       counts.set(key, (counts.get(key) ?? 0) + 1);
     }
 
-    return period.days.map((day) => ({
-      date: this.toChartDate(day),
-      value: counts.get(this.toDayKey(day)) ?? 0,
+    return buckets.map((bucket) => ({
+      date: bucket.label,
+      value: counts.get(bucket.key) ?? 0,
     }));
   }
 
-  async getReservationsToday() {
-    const { todayStart, tomorrowStart } = this.getTodayRange();
+  async getReservationsTotal(window: DashboardWindow = DashboardWindow.WEEK) {
+    const minDate =
+      window === DashboardWindow.ALL
+        ? (
+            await this.prisma.reservation.aggregate({
+              _min: { createdAt: true },
+            })
+          )._min.createdAt
+        : null;
+
+    const range = this.getRange(window, minDate);
 
     const count = await this.prisma.reservation.count({
       where: {
         createdAt: {
-          gte: todayStart,
-          lt: tomorrowStart,
+          gte: range.start,
+          lt: range.end,
         },
       },
     });
@@ -97,8 +138,19 @@ export class DashboardsService {
     return { value: count };
   }
 
-  async getWaitersProcessedReservationsStats() {
-    const period = this.getDaysPeriod(7);
+  async getWaitersProcessedReservationsStats(
+    window: DashboardWindow = DashboardWindow.WEEK,
+  ) {
+    const minDate =
+      window === DashboardWindow.ALL
+        ? (
+            await this.prisma.reservation.aggregate({
+              _min: { realStartTime: true },
+            })
+          )._min.realStartTime
+        : null;
+
+    const range = this.getRange(window, minDate);
 
     const reservations = await this.prisma.reservation.groupBy({
       by: ['waiterId'],
@@ -107,8 +159,8 @@ export class DashboardsService {
           not: null,
         },
         realStartTime: {
-          gte: period.start,
-          lt: period.end,
+          gte: range.start,
+          lt: range.end,
         },
       },
       _count: {
@@ -139,7 +191,6 @@ export class DashboardsService {
         const waiter = waitersMap.get(item.waiterId!);
 
         return {
-          //   waiterId: item.waiterId,
           name: waiter?.name ?? waiter?.email ?? `Waiter #${item.waiterId}`,
           reservations: item._count._all,
         };
@@ -147,33 +198,171 @@ export class DashboardsService {
       .sort((a, b) => b.reservations - a.reservations);
   }
 
-  private getTodayRange() {
-    const now = new Date();
-    const todayStart = this.startOfDay(now);
-    const tomorrowStart = new Date(todayStart);
-    tomorrowStart.setDate(tomorrowStart.getDate() + 1);
+  async getAverageVisitDuration(
+    window: DashboardWindow = DashboardWindow.WEEK,
+  ) {
+    const minDate =
+      window === DashboardWindow.ALL
+        ? (
+            await this.prisma.reservation.aggregate({
+              _min: { realStartTime: true },
+            })
+          )._min.realStartTime
+        : null;
 
-    return { todayStart, tomorrowStart };
-  }
+    const range = this.getRange(window, minDate);
 
-  private getDaysPeriod(daysCount: number) {
-    const { todayStart, tomorrowStart } = this.getTodayRange();
-    const start = new Date(todayStart);
-    start.setDate(start.getDate() - (daysCount - 1));
+    const reservations = await this.prisma.reservation.findMany({
+      where: {
+        realStartTime: {
+          gte: range.start,
+          lt: range.end,
+        },
+        realEndTime: {
+          not: null,
+        },
+      },
+      select: {
+        realStartTime: true,
+        realEndTime: true,
+      },
+    });
 
-    const days: Date[] = [];
-
-    for (let i = 0; i < daysCount; i++) {
-      const day = new Date(start);
-      day.setDate(start.getDate() + i);
-      days.push(day);
+    if (!reservations.length) {
+      return {
+        valueMinutes: 0,
+      };
     }
 
+    const totalMs = reservations.reduce((sum, item) => {
+      if (!item.realStartTime || !item.realEndTime) {
+        return sum;
+      }
+
+      return sum + (item.realEndTime.getTime() - item.realStartTime.getTime());
+    }, 0);
+
+    const averageMinutes = totalMs / reservations.length / 60_000;
+
     return {
-      start,
-      end: tomorrowStart,
-      days,
+      valueMinutes: Number(averageMinutes.toFixed(1)),
     };
+  }
+
+  private getRange(window: DashboardWindow, minDate?: Date | null): TimeWindow {
+    const now = new Date();
+
+    if (window === DashboardWindow.DAY) {
+      const start = this.startOfDay(now);
+      const end = new Date(start);
+      end.setDate(end.getDate() + 1);
+
+      return { start, end, bucket: 'hour' };
+    }
+
+    if (window === DashboardWindow.MONTH) {
+      const end = this.tomorrowStart(now);
+      const start = new Date(end);
+      start.setDate(start.getDate() - 30);
+
+      return { start, end, bucket: 'day' };
+    }
+
+    if (window === DashboardWindow.YEAR) {
+      const end = this.startOfMonth(now);
+      end.setMonth(end.getMonth() + 1);
+      const start = new Date(end);
+      start.setMonth(start.getMonth() - 12);
+
+      return { start, end, bucket: 'month' };
+    }
+
+    if (window === DashboardWindow.ALL) {
+      const end = this.startOfMonth(now);
+      end.setMonth(end.getMonth() + 1);
+      const start = minDate
+        ? this.startOfMonth(minDate)
+        : this.startOfMonth(now);
+
+      return { start, end, bucket: 'month' };
+    }
+
+    const end = this.tomorrowStart(now);
+    const start = new Date(end);
+    start.setDate(start.getDate() - 7);
+
+    return { start, end, bucket: 'day' };
+  }
+
+  private createBuckets(range: TimeWindow) {
+    const buckets: Array<{ key: string; label: string }> = [];
+    const cursor = new Date(range.start);
+
+    while (cursor < range.end) {
+      const key = this.getBucketKey(cursor, range.bucket);
+      buckets.push({
+        key,
+        label: this.getBucketLabel(cursor, range.bucket),
+      });
+
+      if (range.bucket === 'hour') {
+        cursor.setHours(cursor.getHours() + 1, 0, 0, 0);
+      } else if (range.bucket === 'day') {
+        cursor.setDate(cursor.getDate() + 1);
+        cursor.setHours(0, 0, 0, 0);
+      } else {
+        cursor.setMonth(cursor.getMonth() + 1, 1);
+        cursor.setHours(0, 0, 0, 0);
+      }
+    }
+
+    return buckets;
+  }
+
+  private getBucketKey(date: Date, bucket: BucketUnit) {
+    if (bucket === 'hour') {
+      const d = new Date(date);
+      d.setMinutes(0, 0, 0);
+      return `${d.toISOString().slice(0, 13)}:00`;
+    }
+
+    if (bucket === 'day') {
+      return this.startOfDay(date).toISOString().slice(0, 10);
+    }
+
+    const monthStart = this.startOfMonth(date);
+    return monthStart.toISOString().slice(0, 7);
+  }
+
+  private getBucketLabel(date: Date, bucket: BucketUnit) {
+    if (bucket === 'hour') {
+      return date.toLocaleTimeString('ru-RU', {
+        hour: '2-digit',
+        minute: '2-digit',
+      });
+    }
+
+    if (bucket === 'day') {
+      return date.toLocaleDateString('en-US', {
+        month: 'short',
+        day: '2-digit',
+      });
+    }
+
+    return date.toLocaleDateString('ru-RU', {
+      month: 'short',
+      year: 'numeric',
+    });
+  }
+
+  private initBucketsMap(buckets: Array<{ key: string }>) {
+    const map = new Map<string, number>();
+
+    for (const bucket of buckets) {
+      map.set(bucket.key, 0);
+    }
+
+    return map;
   }
 
   private startOfDay(date: Date) {
@@ -182,25 +371,16 @@ export class DashboardsService {
     return d;
   }
 
-  private toDayKey(date: Date) {
-    const d = this.startOfDay(date);
-    return d.toISOString().slice(0, 10);
+  private startOfMonth(date: Date) {
+    const d = new Date(date);
+    d.setDate(1);
+    d.setHours(0, 0, 0, 0);
+    return d;
   }
 
-  private toChartDate(date: Date) {
-    return date.toLocaleDateString('en-US', {
-      month: 'short',
-      day: '2-digit',
-    });
-  }
-
-  private initDayMap(days: Date[]) {
-    const map = new Map<string, number>();
-
-    for (const day of days) {
-      map.set(this.toDayKey(day), 0);
-    }
-
-    return map;
+  private tomorrowStart(date: Date) {
+    const tomorrow = this.startOfDay(date);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    return tomorrow;
   }
 }

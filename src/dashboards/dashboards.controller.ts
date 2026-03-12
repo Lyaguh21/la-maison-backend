@@ -1,43 +1,54 @@
-import { Controller, Get } from '@nestjs/common';
+import { Controller, Get, Query } from '@nestjs/common';
 import { ApiOperation } from '@nestjs/swagger';
 import { Roles } from 'src/auth/decorators/roles.decorator';
 import { DashboardsService } from './dashboards.service';
+import { DashboardWindowDto } from './dto/dashboard-window.dto';
 
 @Controller('dashboards')
 @Roles('ADMIN', 'WAITER')
 export class DashboardsController {
   constructor(private readonly dashboards: DashboardsService) {}
 
-  @ApiOperation({ summary: 'Выручка за 7 дней' })
-  @Get('revenue/7-days')
-  getRevenue7Days() {
-    return this.dashboards.getRevenue7Days();
+  @ApiOperation({ summary: 'График выручки за выбранный период' })
+  @Get('revenue')
+  getRevenue(@Query() query: DashboardWindowDto) {
+    return this.dashboards.getRevenue(query.window);
   }
 
-  @ApiOperation({ summary: 'Выручка за сегодня' })
-  @Get('revenue/today')
-  getRevenueToday() {
-    return this.dashboards.getRevenueToday();
+  @ApiOperation({ summary: 'Суммарная выручка за выбранный период' })
+  @Get('revenue/total')
+  getRevenueTotal(@Query() query: DashboardWindowDto) {
+    return this.dashboards.getRevenueTotal(query.window);
   }
 
-  @ApiOperation({ summary: 'Количество бронирований за 7 дней' })
-  @Get('reservations/7-days')
-  getReservations7Days() {
-    return this.dashboards.getReservations7Days();
+  @ApiOperation({ summary: 'График бронирований за выбранный период' })
+  @Get('reservations')
+  getReservations(@Query() query: DashboardWindowDto) {
+    return this.dashboards.getReservations(query.window);
   }
 
-  @ApiOperation({ summary: 'Количество бронирований за сегодня' })
-  @Get('reservations/today')
-  getReservationsToday() {
-    return this.dashboards.getReservationsToday();
+  @ApiOperation({
+    summary: 'Суммарное количество бронирований за выбранный период',
+  })
+  @Get('reservations/total')
+  getReservationsTotal(@Query() query: DashboardWindowDto) {
+    return this.dashboards.getReservationsTotal(query.window);
   }
 
   @ApiOperation({
     summary:
-      'Список официантов с количеством обработанных резерваций за 7 дней',
+      'Список официантов с количеством обработанных резерваций за выбранный период',
   })
-  @Get('waiter-processed/7-days')
-  getWaitersProcessedReservationsStats() {
-    return this.dashboards.getWaitersProcessedReservationsStats();
+  @Get('waiter-processed')
+  getWaitersProcessedReservationsStats(@Query() query: DashboardWindowDto) {
+    return this.dashboards.getWaitersProcessedReservationsStats(query.window);
+  }
+
+  @ApiOperation({
+    summary: 'Среднее время посещения в минутах за выбранный период',
+  })
+  @Get('average-visit-duration')
+  getAverageVisitDuration(@Query() query: DashboardWindowDto) {
+    return this.dashboards.getAverageVisitDuration(query.window);
   }
 }
