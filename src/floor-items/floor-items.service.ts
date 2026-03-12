@@ -45,7 +45,7 @@ export class FloorItemsService {
 
       for (const item of dto.items) {
         if (item.type === 'TABLE') {
-          if (!item.number || !item.tableType) {
+          if (item.number == null || item.tableType == null) {
             throw new BadRequestException(
               'Для объектов типа TABLE должны быть указаны number и tableType',
             );
@@ -99,7 +99,7 @@ export class FloorItemsService {
           ? await tx.floorItems.update({
               where: { id: item.id },
               data: {
-                type: item.type ?? 'EXIT',
+                type: item.type,
                 x: item.x,
                 y: item.y,
                 width: item.width,
@@ -110,7 +110,7 @@ export class FloorItemsService {
             })
           : await tx.floorItems.create({
               data: {
-                type: item.type ?? 'EXIT',
+                type: item.type,
                 x: item.x,
                 y: item.y,
                 width: item.width,

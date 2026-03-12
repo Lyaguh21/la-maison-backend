@@ -721,21 +721,12 @@ async function main() {
   console.log(`  ✅ Создано ${users.length} пользователей`);
 
   // ──────────────────────────────────────────────
-  // Столы (12 шт.)
+  // Столы (3 шт. — вручную введённые)
   // ──────────────────────────────────────────────
   const tablesData = [
-    { number: 1, tableType: 'TWO' as const },
-    { number: 2, tableType: 'TWO' as const },
-    { number: 3, tableType: 'TWO' as const },
-    { number: 4, tableType: 'FOUR' as const },
-    { number: 5, tableType: 'FOUR' as const },
-    { number: 6, tableType: 'FOUR' as const },
-    { number: 7, tableType: 'FOUR' as const },
-    { number: 8, tableType: 'SIX' as const },
-    { number: 9, tableType: 'SIX' as const },
-    { number: 10, tableType: 'TWO' as const },
-    { number: 11, tableType: 'FOUR' as const },
-    { number: 12, tableType: 'SIX' as const },
+    { number: 1, tableType: 'SIX' as const },
+    { number: 2, tableType: 'FOUR' as const },
+    { number: 3, tableType: 'FOUR' as const },
   ];
 
   const tables = await Promise.all(
@@ -752,143 +743,54 @@ async function main() {
     {
       type: 'TABLE' as const,
       tableId: tables[0].id,
-      x: 100,
-      y: 100,
-      width: 60,
-      height: 60,
+      x: 48,
+      y: 48,
+      width: 144,
+      height: 144,
       rotation: 0,
+      number: 1,
+      tableType: 'SIX',
     },
     {
       type: 'TABLE' as const,
       tableId: tables[1].id,
-      x: 200,
-      y: 100,
-      width: 60,
-      height: 60,
+      x: 336,
+      y: 48,
+      width: 96,
+      height: 144,
       rotation: 0,
+      number: 2,
+      tableType: 'FOUR',
     },
     {
       type: 'TABLE' as const,
       tableId: tables[2].id,
-      x: 300,
-      y: 100,
-      width: 60,
-      height: 60,
+      x: 576,
+      y: 48,
+      width: 96,
+      height: 144,
       rotation: 0,
-    },
-    {
-      type: 'TABLE' as const,
-      tableId: tables[3].id,
-      x: 100,
-      y: 250,
-      width: 80,
-      height: 80,
-      rotation: 0,
-    },
-    {
-      type: 'TABLE' as const,
-      tableId: tables[4].id,
-      x: 230,
-      y: 250,
-      width: 80,
-      height: 80,
-      rotation: 0,
-    },
-    {
-      type: 'TABLE' as const,
-      tableId: tables[5].id,
-      x: 360,
-      y: 250,
-      width: 80,
-      height: 80,
-      rotation: 0,
-    },
-    {
-      type: 'TABLE' as const,
-      tableId: tables[6].id,
-      x: 490,
-      y: 250,
-      width: 80,
-      height: 80,
-      rotation: 0,
-    },
-    {
-      type: 'TABLE' as const,
-      tableId: tables[7].id,
-      x: 100,
-      y: 400,
-      width: 100,
-      height: 100,
-      rotation: 0,
-    },
-    {
-      type: 'TABLE' as const,
-      tableId: tables[8].id,
-      x: 250,
-      y: 400,
-      width: 100,
-      height: 100,
-      rotation: 0,
-    },
-    {
-      type: 'TABLE' as const,
-      tableId: tables[9].id,
-      x: 400,
-      y: 100,
-      width: 60,
-      height: 60,
-      rotation: 45,
-    },
-    {
-      type: 'TABLE' as const,
-      tableId: tables[10].id,
-      x: 400,
-      y: 400,
-      width: 80,
-      height: 80,
-      rotation: 0,
-    },
-    {
-      type: 'TABLE' as const,
-      tableId: tables[11].id,
-      x: 530,
-      y: 400,
-      width: 100,
-      height: 100,
-      rotation: 0,
-    },
-    // Прочие элементы
-    {
-      type: 'BAR' as const,
-      tableId: null,
-      x: 500,
-      y: 50,
-      width: 200,
-      height: 60,
-      rotation: 0,
-    },
-    {
-      type: 'WC' as const,
-      tableId: null,
-      x: 650,
-      y: 450,
-      width: 50,
-      height: 50,
-      rotation: 0,
-    },
-    {
-      type: 'EXIT' as const,
-      tableId: null,
-      x: 0,
-      y: 250,
-      width: 30,
-      height: 60,
-      rotation: 0,
+      number: 3,
+      tableType: 'FOUR',
     },
   ];
 
   await Promise.all(
-    floorItemsData.map((fi) => prisma.floorItems.create({ data: fi })),
+    floorItemsData.map((fi) => {
+      const { tableId } = fi as any;
+      const allowed = {
+        type: (fi as any).type,
+        x: (fi as any).x,
+        y: (fi as any).y,
+        width: (fi as any).width,
+        height: (fi as any).height,
+        rotation: (fi as any).rotation,
+      } as any;
+      const data = tableId
+        ? { ...allowed, table: { connect: { id: tableId } } }
+        : allowed;
+      return prisma.floorItems.create({ data });
+    }),
   );
 
   console.log(`  ✅ Создано ${floorItemsData.length} элементов зала`);
@@ -918,7 +820,7 @@ async function main() {
   const reservationsData = [
     // Прошлое: завершённые
     {
-      tableId: tables[3].id,
+      tableIndex: 3,
       guestsCount: 4,
       status: 'COMPLETED' as const,
       startTime: hour(18, -3),
@@ -936,7 +838,7 @@ async function main() {
       orderStatus: 'SERVED' as const,
     },
     {
-      tableId: tables[7].id,
+      tableIndex: 7,
       guestsCount: 6,
       status: 'COMPLETED' as const,
       startTime: hour(19, -2),
@@ -958,7 +860,7 @@ async function main() {
       orderStatus: 'SERVED' as const,
     },
     {
-      tableId: tables[1].id,
+      tableIndex: 1,
       guestsCount: 2,
       status: 'PAID' as const,
       startTime: hour(12, -1),
@@ -976,7 +878,7 @@ async function main() {
     },
     // Прошлое: отменённая
     {
-      tableId: tables[4].id,
+      tableIndex: 4,
       guestsCount: 3,
       status: 'CANCELLED' as const,
       startTime: hour(20, -1),
@@ -990,7 +892,7 @@ async function main() {
     },
     // Прошлое: NO_SHOW
     {
-      tableId: tables[0].id,
+      tableIndex: 0,
       guestsCount: 2,
       status: 'NO_SHOW' as const,
       startTime: hour(19, -1),
@@ -1004,7 +906,7 @@ async function main() {
     },
     // Текущая: SEATED (сейчас за столом)
     {
-      tableId: tables[5].id,
+      tableIndex: 5,
       guestsCount: 4,
       status: 'SEATED' as const,
       startTime: hour(now.getHours() - 1),
@@ -1023,7 +925,7 @@ async function main() {
     },
     // Будущие: BOOKED
     {
-      tableId: tables[8].id,
+      tableIndex: 8,
       guestsCount: 5,
       status: 'BOOKED' as const,
       startTime: hour(19, 1),
@@ -1034,7 +936,7 @@ async function main() {
       orderStatus: null,
     },
     {
-      tableId: tables[2].id,
+      tableIndex: 2,
       guestsCount: 2,
       status: 'BOOKED' as const,
       startTime: hour(20, 1),
@@ -1047,7 +949,7 @@ async function main() {
       orderStatus: null,
     },
     {
-      tableId: tables[10].id,
+      tableIndex: 10,
       guestsCount: 4,
       status: 'BOOKED' as const,
       startTime: hour(18, 2),
@@ -1061,7 +963,7 @@ async function main() {
     },
     // Ещё одна завершённая для объёма
     {
-      tableId: tables[9].id,
+      tableIndex: 9,
       guestsCount: 2,
       status: 'COMPLETED' as const,
       startTime: hour(13, -4),
@@ -1092,7 +994,7 @@ async function main() {
 
     await prisma.reservation.create({
       data: {
-        tableId: r.tableId,
+        tableId: tables[r.tableIndex % tables.length].id,
         guestsCount: r.guestsCount,
         status: r.status,
         startTime: r.startTime,

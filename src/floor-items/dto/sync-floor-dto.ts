@@ -1,14 +1,20 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
-  IsOptional,
-  IsNumber,
   IsIn,
-  Min,
   Max,
-  IsString,
+  IsNumber,
+  IsOptional,
+  IsArray,
+  Min,
   ValidateNested,
 } from 'class-validator';
+
+const FLOOR_ITEM_TYPES = ['WC', 'EXIT', 'BAR', 'TABLE'] as const;
+const TABLE_TYPES = ['TWO', 'FOUR', 'SIX'] as const;
+
+export type FloorItemType = (typeof FLOOR_ITEM_TYPES)[number];
+export type TableType = (typeof TABLE_TYPES)[number];
 
 export class SyncFloorItemDto {
   @ApiPropertyOptional({
@@ -21,12 +27,11 @@ export class SyncFloorItemDto {
 
   @ApiProperty({
     example: 'TABLE',
-    enum: ['WC', 'EXIT', 'BAR', 'TABLE'],
-    description: 'Тип объекта интерьера (Только для создания)',
+    enum: FLOOR_ITEM_TYPES,
+    description: 'Тип объекта интерьера',
   })
-  @IsIn(['WC', 'EXIT', 'BAR', 'TABLE'])
-  @IsOptional()
-  type?: 'WC' | 'EXIT' | 'BAR' | 'TABLE';
+  @IsIn(FLOOR_ITEM_TYPES)
+  type: FloorItemType;
 
   @ApiProperty({
     example: 10,
@@ -73,17 +78,17 @@ export class SyncFloorItemDto {
   })
   @IsOptional()
   @IsNumber()
+  @Min(1)
   number?: number;
 
   @ApiPropertyOptional({
     example: 'FOUR',
-    enum: ['TWO', 'FOUR', 'SIX'],
-    description:
-      'Тип стола (только для объектов типа TABLE)(только для создания)',
+    enum: TABLE_TYPES,
+    description: 'Тип стола (только для объектов типа TABLE)',
   })
   @IsOptional()
-  @IsIn(['TWO', 'FOUR', 'SIX'])
-  tableType?: 'TWO' | 'FOUR' | 'SIX';
+  @IsIn(TABLE_TYPES)
+  tableType?: TableType;
 }
 
 export class SyncFloorDto {
@@ -114,6 +119,7 @@ export class SyncFloorDto {
       },
     ],
   })
+  @IsArray()
   @ValidateNested({ each: true })
   @Type(() => SyncFloorItemDto)
   items: SyncFloorItemDto[];
