@@ -13,13 +13,28 @@ export class OrdersService {
     });
   }
   async getAllCooking() {
-    return this.prisma.order.findMany({
+    const orders = await this.prisma.order.findMany({
+      where: {
+        orderItems: {
+          some: {
+            status: 'COOKING',
+          },
+        },
+      },
       include: {
         orderItems: {
           where: {
             status: 'COOKING',
           },
-          include: { dish: true },
+          include: {
+            dish: {
+              include: {
+                dishIngredients: {
+                  include: { ingredient: true },
+                },
+              },
+            },
+          },
         },
         reservation: {
           select: {
@@ -28,6 +43,17 @@ export class OrdersService {
         },
       },
     });
+
+    return orders.map((order) => ({
+      ...order,
+      orderItems: order.orderItems.map((item) => ({
+        ...item,
+        dish: {
+          ...item.dish,
+          dishIngredients: item.dish.dishIngredients.map((di) => di.ingredient),
+        },
+      })),
+    }));
   }
 
   async createOrder(dto: CreateOrderDto) {
