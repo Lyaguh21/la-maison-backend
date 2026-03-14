@@ -7,10 +7,24 @@ export class OrdersService {
   constructor(private readonly prisma: PrismaService) {}
 
   async updateStatusOrderItem(orderItemId: number, status: 'SERVED' | 'READY') {
-    return await this.prisma.orderItem.update({
+    const updated = await this.prisma.orderItem.update({
       where: { id: orderItemId },
       data: { status },
     });
+
+    // Если все элементы заказа в статусе READY — помечаем заказ finishedAt
+    const remaining = await this.prisma.orderItem.count({
+      where: { orderId: updated.orderId, status: { not: 'READY' } },
+    });
+
+    if (remaining === 0) {
+      await this.prisma.order.update({
+        where: { id: updated.orderId },
+        data: { finishedAt: new Date() },
+      });
+    }
+
+    return updated;
   }
   async getArchiveOrders() {
     const orders = await this.prisma.order.findMany({

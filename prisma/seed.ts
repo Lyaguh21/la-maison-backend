@@ -1010,6 +1010,9 @@ async function main() {
               order: {
                 create: {
                   totalPriceOrder: totalPrice,
+                  ...(['READY', 'SERVED'].includes(r.orderStatus as string)
+                    ? { finishedAt: new Date() }
+                    : {}),
                   orderItems: {
                     create: orderItems.map((oi) => ({
                       dishId: oi.dishId,
