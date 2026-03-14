@@ -24,6 +24,13 @@ export class OrdersController {
     return this.orders.getAllCooking();
   }
 
+  @ApiOperation({ summary: 'Получить архив заказов (Повар)' })
+  @Roles('COOK')
+  @Get('archive')
+  getArchive() {
+    return this.orders.getArchiveOrders();
+  }
+
   @ApiOperation({ summary: 'Создание заказа (Все)' })
   @Post()
   createOrder(@Body() dto: CreateOrderDto) {

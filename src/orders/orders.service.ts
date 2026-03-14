@@ -12,6 +12,52 @@ export class OrdersService {
       data: { status },
     });
   }
+  async getArchiveOrders() {
+    const orders = await this.prisma.order.findMany({
+      where: {
+        orderItems: {
+          some: {
+            status: { in: ['READY', 'SERVED'] },
+          },
+        },
+      },
+      include: {
+        orderItems: {
+          where: {
+            status: { in: ['READY', 'SERVED'] },
+          },
+          include: {
+            dish: {
+              include: {
+                dishIngredients: {
+                  include: { ingredient: true },
+                },
+              },
+            },
+          },
+        },
+        reservation: {
+          select: {
+            tableId: true,
+          },
+        },
+      },
+      orderBy: { updatedAt: 'asc' },
+      take: 10,
+    });
+
+    return orders.map((order) => ({
+      ...order,
+      orderItems: order.orderItems.map((item) => ({
+        ...item,
+        dish: {
+          ...item.dish,
+          dishIngredients: item.dish.dishIngredients.map((di) => di.ingredient),
+        },
+      })),
+    }));
+  }
+
   async getAllCooking() {
     const orders = await this.prisma.order.findMany({
       where: {
