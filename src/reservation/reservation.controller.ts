@@ -18,6 +18,7 @@ import { CurrentUser } from 'src/auth/decorators/current-user.decorator';
 import type { AuthUser } from 'src/auth/types/auth-user.type';
 import { ListReservationInMomentDto } from './dto/list-reservations-in-moment';
 import { ListReservationsByDayDto } from './dto/list-reservations-by-day.dto';
+import { ListReservationsInRangeDto } from './dto/list-reservations-in-range.dto';
 
 @Controller('reservation')
 export class ReservationController {
@@ -40,6 +41,15 @@ export class ReservationController {
     @Query() dto: ListReservationsByDayDto,
   ) {
     return this.reservation.getAllByTableAndDay(tableId, dto.day);
+  }
+
+  @ApiOperation({
+    summary:
+      'Получение броней, которые пересекают или касаются заданного отрезка времени',
+  })
+  @Get('range')
+  getAllInRange(@Query() dto: ListReservationsInRangeDto) {
+    return this.reservation.getAllInRange(dto);
   }
 
   @ApiOperation({ summary: 'Создание новой брони (Пользователь, Официант)' })

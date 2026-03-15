@@ -6,6 +6,7 @@ import { UpdateReservationDto } from './dto/update-reservation.dto';
 import { UpdateReservationStatusDto } from './dto/update-reservation-status.dto';
 import type { AuthUser } from 'src/auth/types/auth-user.type';
 import { ListReservationInMomentDto } from './dto/list-reservations-in-moment';
+import { ListReservationsInRangeDto } from './dto/list-reservations-in-range.dto';
 
 @Injectable()
 export class ReservationService {
@@ -23,6 +24,23 @@ export class ReservationService {
     }
 
     const end = new Date(`${day}T23:59:59.999Z`);
+    return { start, end };
+  }
+
+  private getRangeInDay(day: string, startTime: string, endTime: string) {
+    const start = new Date(`${day}T${startTime}:00.000Z`);
+    const end = new Date(`${day}T${endTime}:00.000Z`);
+
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+      throw new BadRequestException(
+        'Неверный формат даты или времени. Используйте day=YYYY-MM-DD и время HH:mm',
+      );
+    }
+
+    if (start > end) {
+      throw new BadRequestException('startTime не может быть позже endTime');
+    }
+
     return { start, end };
   }
 
@@ -83,6 +101,46 @@ export class ReservationService {
     return this.mapReservationsWithTotalPrice(reservations);
   }
 
+  async getAllInRange(dto: ListReservationsInRangeDto) {
+    const { start, end } = this.getRangeInDay(
+      dto.day,
+      dto.startTime,
+      dto.endTime,
+    );
+
+    const reservations = await this.prisma.reservation.findMany({
+      where: {
+        startTime: { lte: end },
+        endTime: { gte: start },
+      },
+      include: {
+        order: {
+          select: { totalPriceOrder: true },
+        },
+      },
+    });
+
+    const sorted = reservations.sort((a, b) => {
+      const aStartDistance = Math.abs(a.startTime.getTime() - start.getTime());
+      const bStartDistance = Math.abs(b.startTime.getTime() - start.getTime());
+
+      if (aStartDistance !== bStartDistance) {
+        return aStartDistance - bStartDistance;
+      }
+
+      const aEndDistance = Math.abs(a.endTime.getTime() - end.getTime());
+      const bEndDistance = Math.abs(b.endTime.getTime() - end.getTime());
+
+      if (aEndDistance !== bEndDistance) {
+        return aEndDistance - bEndDistance;
+      }
+
+      return a.startTime.getTime() - b.startTime.getTime();
+    });
+
+    return this.mapReservationsWithTotalPrice(sorted);
+  }
+
   async getOne(id: number) {
     const reservation = await this.prisma.reservation.findUnique({
       where: { id },
@@ -109,6 +167,35 @@ export class ReservationService {
       throw new Error('Стол не найден');
     }
 
+    const startTime = new Date(reservation.startTime);
+    const endTime = new Date(reservation.endTime);
+
+    if (Number.isNaN(startTime.getTime()) || Number.isNaN(endTime.getTime())) {
+      throw new BadRequestException('Некорректный формат времени брони');
+    }
+
+    if (startTime >= endTime) {
+      throw new BadRequestException(
+        'Время начала брони должно быть раньше времени окончания',
+      );
+    }
+
+    const overlappingReservation = await this.prisma.reservation.findFirst({
+      where: {
+        tableId: reservation.tableId,
+        status: { not: 'CANCELLED' },
+        startTime: { lt: endTime },
+        endTime: { gt: startTime },
+      },
+      select: { id: true },
+    });
+
+    if (overlappingReservation) {
+      throw new BadRequestException(
+        'Этот стол уже забронирован на выбранный интервал времени',
+      );
+    }
+
     return await this.prisma.reservation.create({
       data: {
         userId: reservation.userId,
@@ -116,8 +203,8 @@ export class ReservationService {
         guestPhone: reservation.guestPhone,
         guestsCount: reservation.guestsCount,
         tableId: reservation.tableId,
-        startTime: reservation.startTime,
-        endTime: reservation.endTime,
+        startTime,
+        endTime,
       },
     });
   }
