@@ -14,8 +14,46 @@ export class ReservationService {
     private readonly tables: TablesService,
   ) {}
 
-  async getAll() {
+  private getDayRange(day: string) {
+    const start = new Date(`${day}T00:00:00.000Z`);
+    if (Number.isNaN(start.getTime())) {
+      throw new BadRequestException(
+        'Неверный формат day. Ожидается YYYY-MM-DD',
+      );
+    }
+
+    const end = new Date(`${day}T23:59:59.999Z`);
+    return { start, end };
+  }
+
+  private mapReservationsWithTotalPrice(
+    reservations: Array<
+      Awaited<ReturnType<typeof this.prisma.reservation.findMany>>[number]
+    >,
+  ) {
+    return reservations.map(({ order, ...reservation }: any) => ({
+      ...reservation,
+      totalPrice: order.reduce(
+        (sum: number, o: { totalPriceOrder: number | null }) =>
+          sum + (o.totalPriceOrder ?? 0),
+        0,
+      ),
+    }));
+  }
+
+  async getAll(day?: string) {
+    const where = day
+      ? (() => {
+          const { start, end } = this.getDayRange(day);
+          return {
+            startTime: { lte: end },
+            endTime: { gte: start },
+          };
+        })()
+      : undefined;
+
     const reservations = await this.prisma.reservation.findMany({
+      where,
       include: {
         order: {
           select: { totalPriceOrder: true },
@@ -23,10 +61,26 @@ export class ReservationService {
       },
     });
 
-    return reservations.map(({ order, ...reservation }) => ({
-      ...reservation,
-      totalPrice: order.reduce((sum, o) => sum + (o.totalPriceOrder ?? 0), 0),
-    }));
+    return this.mapReservationsWithTotalPrice(reservations);
+  }
+
+  async getAllByTableAndDay(tableId: number, day: string) {
+    const { start, end } = this.getDayRange(day);
+
+    const reservations = await this.prisma.reservation.findMany({
+      where: {
+        tableId,
+        startTime: { lte: end },
+        endTime: { gte: start },
+      },
+      include: {
+        order: {
+          select: { totalPriceOrder: true },
+        },
+      },
+    });
+
+    return this.mapReservationsWithTotalPrice(reservations);
   }
 
   async getOne(id: number) {

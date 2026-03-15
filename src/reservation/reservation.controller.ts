@@ -17,16 +17,29 @@ import { UpdateReservationStatusDto } from './dto/update-reservation-status.dto'
 import { CurrentUser } from 'src/auth/decorators/current-user.decorator';
 import type { AuthUser } from 'src/auth/types/auth-user.type';
 import { ListReservationInMomentDto } from './dto/list-reservations-in-moment';
+import { ListReservationsByDayDto } from './dto/list-reservations-by-day.dto';
 
 @Controller('reservation')
 export class ReservationController {
   constructor(private readonly reservation: ReservationService) {}
 
-  @ApiOperation({ summary: 'Получение всех броней (Администратор, Официант)' })
-  @Roles('ADMIN', 'WAITER')
+  @ApiOperation({
+    summary: 'Получение всех броней на день (Администратор, Официант)',
+  })
   @Get()
-  getAll() {
-    return this.reservation.getAll();
+  getAll(@Query() dto: ListReservationsByDayDto) {
+    return this.reservation.getAll(dto.day);
+  }
+
+  @ApiOperation({
+    summary: 'Получение всех броней по столу на выбранный день',
+  })
+  @Get('table/:tableId/day')
+  getAllByTableAndDay(
+    @Param('tableId', ParseIntPipe) tableId: number,
+    @Query() dto: ListReservationsByDayDto,
+  ) {
+    return this.reservation.getAllByTableAndDay(tableId, dto.day);
   }
 
   @ApiOperation({ summary: 'Создание новой брони (Пользователь, Официант)' })
