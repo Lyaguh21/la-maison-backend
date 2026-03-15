@@ -677,24 +677,35 @@ async function main() {
       email: 'admin@lamaison.ru',
       phone: '+79001000001',
       role: 'ADMIN' as const,
+      allergens: [],
     },
     {
       name: 'Анна Волкова',
       email: 'anna@lamaison.ru',
       phone: '+79001000002',
       role: 'WAITER' as const,
+      allergens: [],
     },
     {
       name: 'Максим Петров',
       email: 'maxim@lamaison.ru',
       phone: '+79001000003',
       role: 'COOK' as const,
+      allergens: [],
     },
     {
       name: 'Елена Смирнова',
       email: 'elena@example.com',
       phone: '+79001000004',
       role: 'CUSTOMER' as const,
+      allergens: ['Молоко', 'Миндаль'],
+    },
+    {
+      name: 'Игорь Сидоров',
+      email: 'igor@lamaison.ru',
+      phone: '+79001000005',
+      role: 'CUSTOMER' as const,
+      allergens: ['Грецкий орех', 'Мёд'],
     },
   ];
 
@@ -708,10 +719,7 @@ async function main() {
           passwordHash,
           role: u.role,
           userAllergens: {
-            connect:
-              u.role === 'CUSTOMER'
-                ? [{ id: ingMap['Молоко'] }, { id: ingMap['Миндаль'] }]
-                : [],
+            connect: (u.allergens || []).map((n) => ({ id: ingMap[n] })),
           },
         },
       }),
@@ -830,8 +838,8 @@ async function main() {
       userId: customer.id,
       waiterId: waiter.id,
       items: [
-        { dishIdx: 0, qty: 2 },
-        { dishIdx: 5, qty: 1 },
+        { dishIdx: 0, qty: 2, comment: 'Пожалуйста, без оливок' },
+        { dishIdx: 5, qty: 1, comment: 'Поджарить чуть сильнее' },
         { dishIdx: 17, qty: 2 },
         { dishIdx: 30, qty: 4 },
       ],
@@ -851,7 +859,7 @@ async function main() {
       waiterId: waiter.id,
       items: [
         { dishIdx: 2, qty: 2 },
-        { dishIdx: 7, qty: 3 },
+        { dishIdx: 7, qty: 3, comment: 'Без чеснока' },
         { dishIdx: 15, qty: 2 },
         { dishIdx: 20, qty: 3 },
         { dishIdx: 32, qty: 6 },
@@ -870,7 +878,7 @@ async function main() {
       userId: customer.id,
       waiterId: waiter.id,
       items: [
-        { dishIdx: 1, qty: 2 },
+        { dishIdx: 1, qty: 2, comment: 'Немного салата отдельно' },
         { dishIdx: 10, qty: 1 },
         { dishIdx: 39, qty: 2 },
       ],
@@ -916,7 +924,7 @@ async function main() {
       waiterId: waiter.id,
       items: [
         { dishIdx: 4, qty: 2 },
-        { dishIdx: 8, qty: 1 },
+        { dishIdx: 8, qty: 1, comment: 'Без перца, пожалуйста' },
         { dishIdx: 12, qty: 1 },
         { dishIdx: 22, qty: 2 },
         { dishIdx: 28, qty: 2 },
@@ -976,10 +984,53 @@ async function main() {
       waiterId: waiter.id,
       items: [
         { dishIdx: 25, qty: 1 },
-        { dishIdx: 26, qty: 1 },
+        { dishIdx: 26, qty: 1, comment: 'Пожалуйста, без орехов' },
         { dishIdx: 33, qty: 2 },
         { dishIdx: 38, qty: 2 },
       ],
+      orderStatus: 'SERVED' as const,
+    },
+    // Доп. брони для тестирования
+    {
+      tableIndex: 6,
+      guestsCount: 3,
+      status: 'BOOKED' as const,
+      startTime: hour(18, 3),
+      endTime: hour(20, 3),
+      userId: users.find((u) => u.email === 'igor@lamaison.ru')!.id,
+      waiterId: null,
+      items: [],
+      orderStatus: null,
+    },
+    {
+      tableIndex: 11,
+      guestsCount: 2,
+      status: 'COMPLETED' as const,
+      startTime: hour(17, -2),
+      endTime: hour(19, -2),
+      realStartTime: hour(17, -2),
+      realEndTime: hour(18, -2),
+      userId: users.find((u) => u.email === 'igor@lamaison.ru')!.id,
+      guestName: null,
+      guestPhone: null,
+      waiterId: waiter.id,
+      items: [
+        { dishIdx: 3, qty: 1, comment: 'Пожалуйста, без трюфеля' },
+        { dishIdx: 29, qty: 2 },
+      ],
+      orderStatus: 'SERVED' as const,
+    },
+    {
+      tableIndex: 12,
+      guestsCount: 2,
+      status: 'PAID' as const,
+      startTime: hour(11, -1),
+      endTime: hour(13, -1),
+      realStartTime: hour(11, -1),
+      realEndTime: hour(12, -1),
+      userId: users.find((u) => u.email === 'igor@lamaison.ru')!.id,
+      waiterId: waiter.id,
+      items: [{ dishIdx: 14, qty: 1, comment: 'Немного соли сверху' }],
       orderStatus: 'SERVED' as const,
     },
   ];
@@ -988,6 +1039,7 @@ async function main() {
     const orderItems = r.items.map((it) => ({
       dishId: dishes[it.dishIdx].id,
       quantity: it.qty,
+      comment: (it as any).comment,
     }));
 
     const totalPrice = calcTotal(orderItems);
@@ -1017,6 +1069,7 @@ async function main() {
                     create: orderItems.map((oi) => ({
                       dishId: oi.dishId,
                       quantity: oi.quantity,
+                      comment: oi.comment ?? undefined,
                       priceSnapshot: dishes.find((d) => d.id === oi.dishId)!
                         .price,
                       status: r.orderStatus!,

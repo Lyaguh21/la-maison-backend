@@ -53,6 +53,7 @@ export class OrdersService {
         reservation: {
           select: {
             tableId: true,
+            user: { select: { userAllergens: true } },
           },
         },
       },
@@ -99,6 +100,7 @@ export class OrdersService {
         reservation: {
           select: {
             tableId: true,
+            user: { select: { userAllergens: true } },
           },
         },
       },
