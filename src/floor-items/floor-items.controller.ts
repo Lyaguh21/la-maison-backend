@@ -9,7 +9,6 @@ export class FloorItemsController {
   constructor(private readonly floorItems: FloorItemsService) {}
 
   @ApiOperation({ summary: 'Получение всех объектов интерьера (Админ)' })
-  @Roles('ADMIN')
   @Get()
   getAll() {
     return this.floorItems.getAll();

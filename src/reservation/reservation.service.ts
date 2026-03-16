@@ -15,27 +15,69 @@ export class ReservationService {
     private readonly tables: TablesService,
   ) {}
 
-  private getDayRange(day: string) {
-    const start = new Date(`${day}T00:00:00.000Z`);
-    if (Number.isNaN(start.getTime())) {
+  private parseLocalDay(day: string) {
+    const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(day);
+    if (!match) {
       throw new BadRequestException(
         'Неверный формат day. Ожидается YYYY-MM-DD',
       );
     }
 
-    const end = new Date(`${day}T23:59:59.999Z`);
+    const year = Number(match[1]);
+    const month = Number(match[2]);
+    const dayOfMonth = Number(match[3]);
+    const date = new Date(year, month - 1, dayOfMonth);
+
+    if (
+      date.getFullYear() !== year ||
+      date.getMonth() !== month - 1 ||
+      date.getDate() !== dayOfMonth
+    ) {
+      throw new BadRequestException(
+        'Неверный формат day. Ожидается YYYY-MM-DD',
+      );
+    }
+
+    return date;
+  }
+
+  private parseLocalTime(time: string) {
+    const match = /^(\d{2}):(\d{2})$/.exec(time);
+    if (!match) {
+      throw new BadRequestException('Неверный формат времени. Ожидается HH:mm');
+    }
+
+    const hours = Number(match[1]);
+    const minutes = Number(match[2]);
+
+    if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) {
+      throw new BadRequestException('Неверный формат времени. Ожидается HH:mm');
+    }
+
+    return { hours, minutes };
+  }
+
+  private getDayRange(day: string) {
+    const localDay = this.parseLocalDay(day);
+    const start = new Date(localDay);
+    start.setHours(0, 0, 0, 0);
+
+    const end = new Date(localDay);
+    end.setHours(23, 59, 59, 999);
+
     return { start, end };
   }
 
   private getRangeInDay(day: string, startTime: string, endTime: string) {
-    const start = new Date(`${day}T${startTime}:00.000Z`);
-    const end = new Date(`${day}T${endTime}:00.000Z`);
+    const localDay = this.parseLocalDay(day);
+    const parsedStart = this.parseLocalTime(startTime);
+    const parsedEnd = this.parseLocalTime(endTime);
 
-    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
-      throw new BadRequestException(
-        'Неверный формат даты или времени. Используйте day=YYYY-MM-DD и время HH:mm',
-      );
-    }
+    const start = new Date(localDay);
+    start.setHours(parsedStart.hours, parsedStart.minutes, 0, 0);
+
+    const end = new Date(localDay);
+    end.setHours(parsedEnd.hours, parsedEnd.minutes, 0, 0);
 
     if (start > end) {
       throw new BadRequestException('startTime не может быть позже endTime');
@@ -96,6 +138,7 @@ export class ReservationService {
           select: { totalPriceOrder: true },
         },
       },
+      orderBy: { startTime: 'asc' },
     });
 
     return this.mapReservationsWithTotalPrice(reservations);
@@ -110,8 +153,8 @@ export class ReservationService {
 
     const reservations = await this.prisma.reservation.findMany({
       where: {
-        startTime: { lte: end },
-        endTime: { gte: start },
+        startTime: { lt: end },
+        endTime: { gt: start },
       },
       include: {
         order: {
