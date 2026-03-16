@@ -25,11 +25,11 @@ export class ReservationController {
   constructor(private readonly reservation: ReservationService) {}
 
   @ApiOperation({
-    summary: 'Получение всех броней на день (Администратор, Официант)',
+    summary: 'Получение всех броней по статусу (Администратор, Официант)',
   })
   @Get()
   getAll(@Query() dto: ListReservationsByDayDto) {
-    return this.reservation.getAll(dto.day);
+    return this.reservation.getAll(dto.day, dto.status);
   }
 
   @ApiOperation({

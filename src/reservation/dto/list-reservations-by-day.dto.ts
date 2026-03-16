@@ -1,5 +1,13 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { IsString, Matches } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import {
+  IsString,
+  Matches,
+  IsOptional,
+  IsEnum,
+  IsArray,
+} from 'class-validator';
+import { StatusReservations } from '@prisma/client';
+import { Transform } from 'class-transformer';
 
 export class ListReservationsByDayDto {
   @ApiProperty({
@@ -11,4 +19,33 @@ export class ListReservationsByDayDto {
     message: 'day must be in format YYYY-MM-DD',
   })
   day: string;
+
+  @ApiPropertyOptional({
+    enum: StatusReservations,
+    isArray: true,
+    description:
+      'Статусы брони. Можно передать один или несколько. Если не указаны — возвращаются все статусы',
+  })
+  @IsOptional()
+  @Transform(({ value }) => {
+    if (value === undefined || value === null || value === '') {
+      return undefined;
+    }
+
+    if (Array.isArray(value)) {
+      return value;
+    }
+
+    if (typeof value === 'string' && value.includes(',')) {
+      return value
+        .split(',')
+        .map((v) => v.trim())
+        .filter(Boolean);
+    }
+
+    return [value];
+  })
+  @IsArray()
+  @IsEnum(StatusReservations, { each: true })
+  status?: StatusReservations[];
 }

@@ -7,6 +7,7 @@ import { UpdateReservationStatusDto } from './dto/update-reservation-status.dto'
 import type { AuthUser } from 'src/auth/types/auth-user.type';
 import { ListReservationInMomentDto } from './dto/list-reservations-in-moment';
 import { ListReservationsInRangeDto } from './dto/list-reservations-in-range.dto';
+import { StatusReservations } from '@prisma/client';
 
 @Injectable()
 export class ReservationService {
@@ -91,8 +92,9 @@ export class ReservationService {
       Awaited<ReturnType<typeof this.prisma.reservation.findMany>>[number]
     >,
   ) {
-    return reservations.map(({ order, ...reservation }: any) => ({
+    return reservations.map(({ order, table, ...reservation }: any) => ({
       ...reservation,
+      tableNumber: table?.number,
       totalPrice: order.reduce(
         (sum: number, o: { totalPriceOrder: number | null }) =>
           sum + (o.totalPriceOrder ?? 0),
@@ -101,8 +103,8 @@ export class ReservationService {
     }));
   }
 
-  async getAll(day?: string) {
-    const where = day
+  async getAll(day?: string, status?: StatusReservations[]) {
+    const dayFilter = day
       ? (() => {
           const { start, end } = this.getDayRange(day);
           return {
@@ -110,7 +112,15 @@ export class ReservationService {
             endTime: { gte: start },
           };
         })()
-      : undefined;
+      : {};
+
+    const statusFilter =
+      status && status.length > 0 ? { status: { in: status } } : {};
+
+    const where = {
+      ...dayFilter,
+      ...statusFilter,
+    };
 
     const reservations = await this.prisma.reservation.findMany({
       where,
@@ -118,7 +128,9 @@ export class ReservationService {
         order: {
           select: { totalPriceOrder: true },
         },
+        table: { select: { number: true } },
       },
+      orderBy: { startTime: 'asc' },
     });
 
     return this.mapReservationsWithTotalPrice(reservations);

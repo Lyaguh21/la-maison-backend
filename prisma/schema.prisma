@@ -22,12 +22,13 @@ model User {
 }
 
 model Tables {
-  id         Int         @id @default(autoincrement())
-  number     Int         @unique
-  tableType  TableType
-  createdAt  DateTime    @default(now())
-  updatedAt  DateTime    @updatedAt
-  floorItems FloorItems?
+  id           Int           @id @default(autoincrement())
+  number       Int           @unique
+  tableType    TableType
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  floorItems   FloorItems?
+  reservations Reservation[]
 }
 
 model FloorItems {
@@ -87,6 +88,7 @@ model Reservation {
   guestName     String?
   guestPhone    String?
   tableId       Int
+  table         Tables             @relation(fields: [tableId], references: [id])
   guestsCount   Int
   status        StatusReservations @default(BOOKED)
   startTime     DateTime
