@@ -24,6 +24,16 @@ import { ListReservationsInRangeDto } from './dto/list-reservations-in-range.dto
 export class ReservationController {
   constructor(private readonly reservation: ReservationService) {}
 
+  @Get('my')
+  getMy(@CurrentUser() user: AuthUser) {
+    return this.reservation.getMy(user);
+  }
+
+  @Get('my/archive')
+  getMyArchive(@CurrentUser() user: AuthUser) {
+    return this.reservation.getMyArchive(user);
+  }
+
   @ApiOperation({
     summary: 'Получение всех броней по статусу (Администратор, Официант)',
   })

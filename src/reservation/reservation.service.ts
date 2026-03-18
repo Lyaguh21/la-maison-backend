@@ -104,6 +104,48 @@ export class ReservationService {
     }));
   }
 
+  async getMy(user: AuthUser) {
+    const reservations = await this.prisma.reservation.findMany({
+      where: {
+        userId: user.userId,
+        status: { in: ['BOOKED', 'SEATED', 'PAID'] },
+      },
+      include: {
+        order: {
+          include: {
+            orderItems: {
+              include: { dish: true },
+            },
+          },
+        },
+        table: { select: { number: true } },
+      },
+      orderBy: { startTime: 'asc' },
+    });
+    return reservations;
+  }
+
+  async getMyArchive(user: AuthUser) {
+    const reservations = await this.prisma.reservation.findMany({
+      where: {
+        userId: user.userId,
+        status: { in: ['CANCELLED', 'NO_SHOW', 'COMPLETED'] },
+      },
+      include: {
+        order: {
+          include: {
+            orderItems: {
+              include: { dish: true },
+            },
+          },
+        },
+        table: { select: { number: true } },
+      },
+      orderBy: { startTime: 'asc' },
+    });
+    return reservations;
+  }
+
   async getAll(day?: string, status?: StatusReservations[]) {
     const dayFilter = day
       ? (() => {
