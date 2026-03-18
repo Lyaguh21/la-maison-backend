@@ -922,14 +922,23 @@ async function main() {
       realStartTime: hour(now.getHours() - 1),
       userId: customer.id,
       waiterId: waiter.id,
-      items: [
-        { dishIdx: 4, qty: 2 },
-        { dishIdx: 8, qty: 1, comment: 'Без перца, пожалуйста' },
-        { dishIdx: 12, qty: 1 },
-        { dishIdx: 22, qty: 2 },
-        { dishIdx: 28, qty: 2 },
+      orders: [
+        {
+          orderStatus: 'COOKING' as const,
+          items: [
+            { dishIdx: 4, qty: 2 },
+            { dishIdx: 8, qty: 1, comment: 'Без перца, пожалуйста' },
+            { dishIdx: 12, qty: 1 },
+          ],
+        },
+        {
+          orderStatus: 'READY' as const,
+          items: [
+            { dishIdx: 22, qty: 2 },
+            { dishIdx: 28, qty: 2 },
+          ],
+        },
       ],
-      orderStatus: 'COOKING' as const,
     },
     // Сегодня: разные статусы для тестирования текущего дня
     {
@@ -954,12 +963,22 @@ async function main() {
       realStartTime: hour(15),
       userId: users.find((u) => u.email === 'igor@lamaison.ru')!.id,
       waiterId: waiter.id,
-      items: [
-        { dishIdx: 6, qty: 1 },
-        { dishIdx: 18, qty: 2, comment: 'Подачу одновременно' },
-        { dishIdx: 34, qty: 3 },
+      orders: [
+        {
+          orderStatus: 'COOKING' as const,
+          items: [
+            { dishIdx: 6, qty: 1 },
+            { dishIdx: 18, qty: 2, comment: 'Подачу одновременно' },
+          ],
+        },
+        {
+          orderStatus: 'READY' as const,
+          items: [
+            { dishIdx: 34, qty: 3 },
+            { dishIdx: 20, qty: 1 },
+          ],
+        },
       ],
-      orderStatus: 'COOKING' as const,
     },
     {
       tableIndex: 8,
@@ -971,11 +990,22 @@ async function main() {
       realEndTime: hour(11),
       userId: customer.id,
       waiterId: waiter.id,
-      items: [
-        { dishIdx: 11, qty: 1 },
-        { dishIdx: 27, qty: 2 },
+      orders: [
+        {
+          orderStatus: 'SERVED' as const,
+          items: [
+            { dishIdx: 11, qty: 1 },
+            { dishIdx: 27, qty: 2 },
+          ],
+        },
+        {
+          orderStatus: 'SERVED' as const,
+          items: [
+            { dishIdx: 39, qty: 1 },
+            { dishIdx: 30, qty: 2 },
+          ],
+        },
       ],
-      orderStatus: 'SERVED' as const,
     },
     {
       tableIndex: 9,
@@ -1125,13 +1155,57 @@ async function main() {
   ];
 
   for (const r of reservationsData) {
-    const orderItems = r.items.map((it) => ({
+    const legacyItems = r.items ?? [];
+
+    const legacyOrderItems = legacyItems.map((it) => ({
       dishId: dishes[it.dishIdx].id,
       quantity: it.qty,
       comment: (it as any).comment,
     }));
 
-    const totalPrice = calcTotal(orderItems);
+    const ordersPayload =
+      (r as any).orders?.map((order: any) => {
+        const orderItems = order.items.map((it: any) => ({
+          dishId: dishes[it.dishIdx].id,
+          quantity: it.qty,
+          comment: it.comment,
+        }));
+
+        return {
+          totalPriceOrder: calcTotal(orderItems),
+          ...(['READY', 'SERVED'].includes(order.orderStatus as string)
+            ? { finishedAt: new Date() }
+            : {}),
+          orderItems: {
+            create: orderItems.map((oi) => ({
+              dishId: oi.dishId,
+              quantity: oi.quantity,
+              comment: oi.comment ?? undefined,
+              priceSnapshot: dishes.find((d) => d.id === oi.dishId)!.price,
+              status: order.orderStatus,
+            })),
+          },
+        };
+      }) ??
+      (legacyOrderItems.length > 0
+        ? [
+            {
+              totalPriceOrder: calcTotal(legacyOrderItems),
+              ...(['READY', 'SERVED'].includes(r.orderStatus as string)
+                ? { finishedAt: new Date() }
+                : {}),
+              orderItems: {
+                create: legacyOrderItems.map((oi) => ({
+                  dishId: oi.dishId,
+                  quantity: oi.quantity,
+                  comment: oi.comment ?? undefined,
+                  priceSnapshot: dishes.find((d) => d.id === oi.dishId)!.price,
+                  status: r.orderStatus!,
+                })),
+              },
+            },
+          ]
+        : []);
 
     await prisma.reservation.create({
       data: {
@@ -1146,25 +1220,10 @@ async function main() {
         guestName: (r as any).guestName ?? null,
         guestPhone: (r as any).guestPhone ?? null,
         waiterId: r.waiterId ?? null,
-        ...(orderItems.length > 0
+        ...(ordersPayload.length > 0
           ? {
               order: {
-                create: {
-                  totalPriceOrder: totalPrice,
-                  ...(['READY', 'SERVED'].includes(r.orderStatus as string)
-                    ? { finishedAt: new Date() }
-                    : {}),
-                  orderItems: {
-                    create: orderItems.map((oi) => ({
-                      dishId: oi.dishId,
-                      quantity: oi.quantity,
-                      comment: oi.comment ?? undefined,
-                      priceSnapshot: dishes.find((d) => d.id === oi.dishId)!
-                        .price,
-                      status: r.orderStatus!,
-                    })),
-                  },
-                },
+                create: ordersPayload,
               },
             }
           : {}),
@@ -1173,7 +1232,11 @@ async function main() {
   }
 
   const resCount = reservationsData.length;
-  const ordCount = reservationsData.filter((r) => r.items.length > 0).length;
+  const ordCount = reservationsData.reduce(
+    (sum, r) =>
+      sum + ((r as any).orders?.length ?? ((r.items?.length ?? 0) > 0 ? 1 : 0)),
+    0,
+  );
   console.log(`  ✅ Создано ${resCount} бронирований и ${ordCount} заказов`);
 
   console.log('🎉 Seed завершён!');

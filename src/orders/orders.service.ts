@@ -73,6 +73,53 @@ export class OrdersService {
     }));
   }
 
+  async getReadyOrders() {
+    const orders = await this.prisma.order.findMany({
+      where: {
+        orderItems: {
+          some: {
+            status: 'READY',
+          },
+        },
+      },
+      include: {
+        orderItems: {
+          where: {
+            status: 'READY',
+          },
+          include: {
+            dish: {
+              include: {
+                dishIngredients: {
+                  include: { ingredient: true },
+                },
+              },
+            },
+          },
+        },
+        reservation: {
+          select: {
+            tableId: true,
+            table: { select: { number: true } },
+            user: { select: { userAllergens: true } },
+          },
+        },
+      },
+      orderBy: { updatedAt: 'asc' },
+    });
+
+    return orders.map((order) => ({
+      ...order,
+      orderItems: order.orderItems.map((item) => ({
+        ...item,
+        dish: {
+          ...item.dish,
+          dishIngredients: item.dish.dishIngredients.map((di) => di.ingredient),
+        },
+      })),
+    }));
+  }
+
   async getAllCooking() {
     const orders = await this.prisma.order.findMany({
       where: {

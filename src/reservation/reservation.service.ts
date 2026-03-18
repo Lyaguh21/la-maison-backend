@@ -95,6 +95,7 @@ export class ReservationService {
     return reservations.map(({ order, table, ...reservation }: any) => ({
       ...reservation,
       tableNumber: table?.number,
+      order,
       totalPrice: order.reduce(
         (sum: number, o: { totalPriceOrder: number | null }) =>
           sum + (o.totalPriceOrder ?? 0),
@@ -126,7 +127,11 @@ export class ReservationService {
       where,
       include: {
         order: {
-          select: { totalPriceOrder: true },
+          include: {
+            orderItems: {
+              include: { dish: true },
+            },
+          },
         },
         table: { select: { number: true } },
       },
@@ -147,7 +152,11 @@ export class ReservationService {
       },
       include: {
         order: {
-          select: { totalPriceOrder: true },
+          include: {
+            orderItems: {
+              include: { dish: { select: { name: true, price: true } } },
+            },
+          },
         },
       },
       orderBy: { startTime: 'asc' },
@@ -170,7 +179,11 @@ export class ReservationService {
       },
       include: {
         order: {
-          select: { totalPriceOrder: true },
+          include: {
+            orderItems: {
+              include: { dish: { select: { name: true, price: true } } },
+            },
+          },
         },
       },
     });
@@ -199,21 +212,33 @@ export class ReservationService {
   async getOne(id: number) {
     const reservation = await this.prisma.reservation.findUnique({
       where: { id },
+      include: {
+        order: {
+          include: {
+            orderItems: {
+              include: { dish: { select: { name: true, price: true } } },
+            },
+          },
+        },
+        table: { select: { number: true } },
+      },
     });
+
     if (!reservation) {
       throw new BadRequestException('Бронь не найдена');
     }
 
-    const totalPrice = await this.prisma.order.aggregate({
-      where: {
-        reservationId: id,
-      },
-      _sum: {
-        totalPriceOrder: true,
-      },
-    });
+    const totalPrice = reservation.order.reduce(
+      (sum: number, o: { totalPriceOrder: number | null }) =>
+        sum + (o.totalPriceOrder ?? 0),
+      0,
+    );
 
-    return { ...reservation, totalPrice: totalPrice._sum.totalPriceOrder };
+    return {
+      ...reservation,
+      tableNumber: reservation.table?.number,
+      totalPrice,
+    };
   }
 
   async create(reservation: CreateReservationDto) {
@@ -332,6 +357,16 @@ export class ReservationService {
             realEndTime: null,
           },
         ],
+      },
+      include: {
+        order: {
+          include: {
+            orderItems: {
+              include: { dish: { select: { name: true, price: true } } },
+            },
+          },
+        },
+        table: { select: { number: true } },
       },
     });
   }

@@ -9,6 +9,7 @@ import {
 import { TablesService } from './tables.service';
 import { ApiOperation } from '@nestjs/swagger';
 import { ListReservationInPeriodDto } from './dto/list-reservation-in-period.dto';
+import { ListFreeTablesDto } from './dto/list-free-tables.dto';
 
 @Controller('tables')
 export class TablesController {
@@ -18,6 +19,14 @@ export class TablesController {
   @Get()
   getAll() {
     return this.tables.getAll();
+  }
+
+  @ApiOperation({
+    summary: 'Получение свободных столиков в заданный период (Все)',
+  })
+  @Get('freetables')
+  getFreeTables(@Query() dto: ListFreeTablesDto) {
+    return this.tables.getFreeTables(dto);
   }
 
   @ApiOperation({ summary: 'Получение стола по ID (Все)' })

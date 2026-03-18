@@ -31,6 +31,13 @@ export class OrdersController {
     return this.orders.getArchiveOrders();
   }
 
+  @ApiOperation({ summary: 'Получить готовые блюда (Официант)' })
+  @Roles('WAITER')
+  @Get('ready')
+  getReadyOrders() {
+    return this.orders.getReadyOrders();
+  }
+
   @ApiOperation({ summary: 'Создание заказа (Все)' })
   @Post()
   createOrder(@Body() dto: CreateOrderDto) {
