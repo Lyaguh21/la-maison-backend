@@ -19,6 +19,7 @@ import type { AuthUser } from 'src/auth/types/auth-user.type';
 import { ListReservationInMomentDto } from './dto/list-reservations-in-moment';
 import { ListReservationsByDayDto } from './dto/list-reservations-by-day.dto';
 import { ListReservationsInRangeDto } from './dto/list-reservations-in-range.dto';
+import { Public } from 'src/auth/decorators/public.decorator';
 
 @Controller('reservation')
 export class ReservationController {
@@ -45,6 +46,7 @@ export class ReservationController {
   @ApiOperation({
     summary: 'Получение всех броней по столу на выбранный день',
   })
+  @Public()
   @Get('table/:tableId/day')
   getAllByTableAndDay(
     @Param('tableId', ParseIntPipe) tableId: number,

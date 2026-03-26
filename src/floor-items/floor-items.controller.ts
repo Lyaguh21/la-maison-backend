@@ -3,6 +3,7 @@ import { FloorItemsService } from './floor-items.service';
 import { Roles } from 'src/auth/decorators/roles.decorator';
 import { ApiOperation } from '@nestjs/swagger';
 import { SyncFloorDto } from './dto/sync-floor-dto';
+import { Public } from 'src/auth/decorators/public.decorator';
 
 @Controller('floor-items')
 export class FloorItemsController {
@@ -10,6 +11,7 @@ export class FloorItemsController {
 
   @ApiOperation({ summary: 'Получение всех объектов интерьера (Админ)' })
   @Get()
+  @Public()
   getAll() {
     return this.floorItems.getAll();
   }
