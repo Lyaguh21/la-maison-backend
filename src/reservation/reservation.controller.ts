@@ -59,6 +59,7 @@ export class ReservationController {
     summary:
       'Получение броней, которые пересекают или касаются заданного отрезка времени',
   })
+  @Public()
   @Get('range')
   getAllInRange(@Query() dto: ListReservationsInRangeDto) {
     return this.reservation.getAllInRange(dto);
