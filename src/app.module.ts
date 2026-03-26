@@ -22,6 +22,7 @@ import { DashboardsModule } from './dashboards/dashboards.module';
       validationSchema: Joi.object({
         PORT: Joi.number().port().default(3000),
         DATABASE_URL: Joi.string().required(),
+        CORS_ORIGIN: Joi.string().default('http://localhost:5173'),
       }),
     }),
     ThrottlerModule.forRoot([
